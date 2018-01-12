@@ -13,6 +13,7 @@ import pandas as pd
 import IPython
 from warnings import warn
 from tqdm import tqdm
+from .tools import utf8_attrs
 
 def run_file(base, rid, ftype="_data.h5", check=True):
     """ build path to data file using run ID
@@ -42,68 +43,8 @@ def run_file(base, rid, ftype="_data.h5", check=True):
             raise IOError(fil + " file not found.")
     return fil
 
-def utf8_attrs(info):
-    """ convert bytes to utf8
-
-        args:
-            info   dict()
-
-        return
-            info   dict() (decoded to utf8)
-    """
-    for key, val in info.items():
-        if isinstance(val, bytes):
-            info[key] = val.decode('utf8')
-    return info
-
-def add_column_index(df, label='', position='first'):
-    """ Add a level to MultiIndex columns.
-
-        This can be useful when joining DataFrames with / without multiindex columns.
-
-        >>> st = statistics(a_df)      # MultiIndex DataFrame
-        >>> add_column_index(h5.var, label='VAR').join(st)
-
-        args:
-            df          object to add index level to    pd.DataFrame()
-            label=''    value(s) of the added level(s)  str() / list(str)
-            position=0
-                        position of level to add        'first'/ 'last' or int
-
-        return:
-            df.copy() with pd.MultiIndex()
-    """
-    df2 = df.copy()
-    # multiple labels?
-    if isinstance(label, str):
-        # ..nope...
-        label = [label]
-    # reverse the label list (intuitve behaviour?)
-    label = label[::-1]
-    # position is first?
-    if position == 'first':
-        position = 0
-    # if df is Series then convert to DataFrame
-    if isinstance(df2, pd.Series):
-        df2 = pd.DataFrame(df2)
-    for lbl in label:
-        # add a level for each label
-        df2_columns = df2.columns.tolist()
-        new_columns = []
-        for col in df2_columns:
-            if not isinstance(col, tuple):
-                col = (col,)
-            col = list(col)
-            if position == 'last':
-                col.append(lbl)
-            else:
-                col.insert(position, lbl)
-            new_columns.append(tuple(col))
-        df2.columns = pd.MultiIndex.from_tuples(new_columns)
-    return df2
-
 class H5Data(object):
-    """ A tool for working with oskar hdf5 data.
+    """ For working with oskar hdf5 data.
     """
     def __init__(self, fil, log_file='log.pkl', out_dire=None, update=False):
         # data file
@@ -258,6 +199,8 @@ class H5Data(object):
 
             kwargs:
                 info=False             Return dataset attributes.
+                iconvert=False         Use yscale and yoffset attributes to convert int to dbl dtype.
+                                       -- for speed assume these are the same for every squid!
                 ignore_missing=False   Don't complain if data is not found.
                 update=False           Don't load cache.
                 tqdm_kwargs
@@ -268,6 +211,7 @@ class H5Data(object):
             Nb. For stacking images from multiple squids use axis=2.
         """
         tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
+        iconvert = kwargs.get('iconvert', False)
         get_info = kwargs.get('info', False)
         ignore_missing = kwargs.get('ignore_missing', False)
         #update = kwargs.get('update', False)
@@ -278,7 +222,6 @@ class H5Data(object):
             for sq in tqdm(squids, **tqdm_kwargs):
                 squid_str = str(sq)
                 if squid_str in dfil and dataset in dfil[squid_str]:
-                    arr.append(np.array(dfil[squid_str][dataset]))
                     if get_info:
                         if info is None:
                             info = [pd.DataFrame(utf8_attrs(dict(dfil[squid_str][dataset].attrs)),
@@ -286,6 +229,8 @@ class H5Data(object):
                         elif get_info == 'all':
                             info.append(pd.DataFrame(utf8_attrs(dict(dfil[squid_str][dataset].attrs)),
                                                      index=[sq]))
+                    dat = np.array(dfil[squid_str][dataset])
+                    arr.append(dat)
                 elif not ignore_missing:
                     raise Exception("Error: " + dataset + " not found for squid " \
                                     + squid_str + ".  Use ignore_missing=True if you don't care.")
@@ -296,6 +241,22 @@ class H5Data(object):
         if info is not None:
             info = pd.concat(info)
             info.index.name = 'squid'
+        # integer to double conversion
+        if iconvert:
+            if arr.dtype != int:
+                raise TypeError('iconvert operates on integer arrays only.')
+            if info is None:
+                with h5py.File(self.fil, 'r') as dfil:
+                    squid_str = str(squids[0])
+                    cinf = pd.DataFrame(utf8_attrs(dict(dfil[squid_str][dataset].attrs)), index=[squids[0]])
+            else:
+                cinf = info.copy()
+            if not ('yscale' in cinf.keys() and 'yoffset' in cinf.keys()):
+                raise Exception('attributes `yoffset` and `yscale` are required for iconvert.')
+            else:
+                # alles klar
+                arr = arr.astype(np.float64)
+                arr = arr * cinf['yscale'].values[0] + cinf['yoffset'].values[0]
         if get_info:
             return arr, info
         return arr
