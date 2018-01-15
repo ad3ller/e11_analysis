@@ -199,8 +199,6 @@ class H5Data(object):
 
             kwargs:
                 info=False             Return dataset attributes.
-                iconvert=False         Use yscale and yoffset attributes to convert int to dbl dtype.
-                                       -- for speed assume these are the same for every squid!
                 ignore_missing=False   Don't complain if data is not found.
                 update=False           Don't load cache.
                 tqdm_kwargs
@@ -211,7 +209,6 @@ class H5Data(object):
             Nb. For stacking images from multiple squids use axis=2.
         """
         tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
-        iconvert = kwargs.get('iconvert', False)
         get_info = kwargs.get('info', False)
         ignore_missing = kwargs.get('ignore_missing', False)
         #update = kwargs.get('update', False)
@@ -241,22 +238,6 @@ class H5Data(object):
         if info is not None:
             info = pd.concat(info)
             info.index.name = 'squid'
-        # integer to double conversion
-        if iconvert:
-            if arr.dtype != int:
-                raise TypeError('iconvert operates on integer arrays only.')
-            if info is None:
-                with h5py.File(self.fil, 'r') as dfil:
-                    squid_str = str(squids[0])
-                    cinf = pd.DataFrame(utf8_attrs(dict(dfil[squid_str][dataset].attrs)), index=[squids[0]])
-            else:
-                cinf = info.copy()
-            if not ('yscale' in cinf.keys() and 'yoffset' in cinf.keys()):
-                raise Exception('attributes `yoffset` and `yscale` are required for iconvert.')
-            else:
-                # alles klar
-                arr = arr.astype(np.float64)
-                arr = arr * cinf['yscale'].values[0] + cinf['yoffset'].values[0]
         if get_info:
             return arr, info
         return arr

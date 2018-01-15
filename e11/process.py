@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from tqdm import tqdm
-from .tools import utf8_attrs
 
 def statistics(df, groupby='squid', **kwargs):
     """ Calculate the mean and standard error for a DataFrame grouped by groupby.
@@ -96,11 +95,8 @@ def vrange(h5, dataset, squids=None, axis=1, window=None, cache=None, **kwargs):
         kwargs:
             info=False     Get settings and information.
             update=False   If update then overwrite cached file.
-            iconvert=False Use yscale and yoffset attributes to convert int to dbl dtype.
-                           -- for speed assume these are the same for every squid!
     """
     tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
-    iconvert = kwargs.get('iconvert', False)
     get_info = kwargs.get('info', False)
     update = kwargs.get('update', False)
     # load cached file
@@ -119,7 +115,7 @@ def vrange(h5, dataset, squids=None, axis=1, window=None, cache=None, **kwargs):
         info['squids'] = squids
         info['function'] = 'process.vrange()'
         info['dataset'] = dataset
-        info['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')    
+        info['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         # setup output df
         data = []
         # open file
@@ -149,26 +145,14 @@ def vrange(h5, dataset, squids=None, axis=1, window=None, cache=None, **kwargs):
             raise Exception('No data found for '+ dataset + '.')
         df = pd.concat(data, ignore_index=True)
         df = df.set_index(['squid', 'repeat'])
-        # integer to double conversion
-        if iconvert:
-            # get scale
-            with h5py.File(h5.fil, 'r') as dfil:
-                squid_str = str(squids[0])
-                cinf = pd.DataFrame(utf8_attrs(dict(dfil[squid_str][dataset].attrs)), index=[squids[0]])
-            # rescale
-            if 'yscale' not in cinf.keys():
-                raise Exception('attribute `yscale` is required for iconvert.')
-            else:
-                # alles klar
-                df['vrange'] = df['vrange'] * cinf['yscale'].values[0]
         # output
         if cache is not None:
             obj = (df, info)
             pd.to_pickle(obj, cache_file)
     if get_info:
         return df, info
-    else:
-        return df
+    # otherwise
+    return df
 
 def winsum(h5, dataset, window=(0,-1), squids=None, cache=None, **kwargs):
     """ Index an array dataset using a given window and sum along axis=1.
@@ -184,11 +168,8 @@ def winsum(h5, dataset, window=(0,-1), squids=None, cache=None, **kwargs):
             info=False     Get settings and information.
             mean=False     Divide the window sum by the window size (i.e., calculate the mean).
             update=False   If update and fname exists then overwrite cached file.
-            iconvert=False Use yscale and yoffset attributes to convert int to dbl dtype.
-                           -- for speed assume these are the same for every squid!
     """
     tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
-    iconvert = kwargs.get('iconvert', False)
     get_info = kwargs.get('info', False)
     update = kwargs.get('update', False)
     mean = kwargs.get('mean', False)
@@ -248,27 +229,11 @@ def winsum(h5, dataset, window=(0,-1), squids=None, cache=None, **kwargs):
             raise Exception('No data found for '+ dataset + '.')
         df = pd.concat(data, ignore_index=True)
         df = df.set_index(['squid', 'repeat'])
-        # integer to double conversion
-        if iconvert:
-            # get scale
-            with h5py.File(h5.fil, 'r') as dfil:
-                squid_str = str(squids[0])
-                cinf = pd.DataFrame(utf8_attrs(dict(dfil[squid_str][dataset].attrs)), index=[squids[0]])
-            # rescale
-            if 'yscale' not in cinf.keys() or 'yoffset' not in cinf.keys():
-                raise Exception('attributes `yscale` and `yoffset` are required for iconvert.')
-            else:
-                for num_vals, win in zip(nv, window):
-                    # TODO - check this
-                    if mean:
-                        df[win] = df[win] * cinf['yscale'].values[0] + cinf['yoffset'].values[0]
-                    else:
-                        df[win] = df[win] * cinf['yscale'].values[0] + num_vals * cinf['yoffset'].values[0]
         # output
         if cache is not None and h5.out_dire is not None:
             obj = (df, info)
             pd.to_pickle(obj, cache_file)
     if get_info:
         return df, info
-    else:
-        return df
+    #otherwise
+    return df
