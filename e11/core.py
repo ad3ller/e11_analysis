@@ -399,13 +399,12 @@ class H5Data(object):
             num_sq = len(result)
             if num_sq == 0:
                 raise Exception('No data found for '+ dataset + '.')
-            result = pd.concat(result, ignore_index=True)
-            # straighten out the indexes
-            new_index = list(('squid',) + tuple(result.index.names))
-            for name in result.index.names:
-                # temporarily copy index values back into the dataframe
-                result[name] = result.index.get_level_values(name)
-            result = result.set_index(new_index)
+            result = pd.concat(result)
+            result = result.set_index('squid', append=True)
+            # move squid to the front of the index
+            index_names = result.index.names.copy()
+            index_names.insert(0, index_names.pop(-1))
+            result = result.reorder_levels(index_names)
             # output
             if cache is not None:
                 obj = (result, info)
