@@ -394,14 +394,18 @@ class H5Data(object):
                     if all([ds in dfil[squid_str] for ds in dataset]): 
                         data = [dfil[squid_str][ds] for ds in dataset]   
                         df = func(data, **kwargs)
-                        df['repeat'] = df.index + 1 
                         df['squid'] = sq 
                         result.append(df)
             num_sq = len(result)
             if num_sq == 0:
                 raise Exception('No data found for '+ dataset + '.')
             result = pd.concat(result, ignore_index=True)
-            result = result.set_index(['squid', 'repeat'])
+            # straighten out the indexes
+            new_index = list(('squid',) + tuple(result.index.names))
+            for name in result.index.names:
+                # temporarily copy index values back into the dataframe
+                result[name] = result.index.get_level_values(name)
+            result = result.set_index(new_index)
             # output
             if cache is not None:
                 obj = (result, info)

@@ -115,7 +115,10 @@ def vrange(data, **kwargs):
         rng = np.max(arr, axis=axis) - np.min(arr, axis=axis)
         result.append(rng)
     result = np.array(result)
-    df = pd.DataFrame(result.T, columns=['vrange_%d'%i for i in range(num_datasets)]) 
+    df = pd.DataFrame(result.T, columns=['vrange_%d'%i for i in range(num_datasets)])
+    # set index
+    df['repeat'] = df.index + 1 
+    df = df.set_index(['repeat'])
     return df
 
 def total(data, **kwargs):
@@ -155,7 +158,10 @@ def total(data, **kwargs):
         tot = np.sum(arr, axis=axis)
         result.append(tot)
     result = np.array(result)
-    df = pd.DataFrame(result.T, columns=['total_%d'%i for i in range(num_datasets)]) 
+    df = pd.DataFrame(result.T, columns=['total_%d'%i for i in range(num_datasets)])
+    # set index
+    df['repeat'] = df.index + 1 
+    df = df.set_index(['repeat'])
     return df
 
 def mean(data, **kwargs):
@@ -196,4 +202,7 @@ def mean(data, **kwargs):
         result.append(av)
     result = np.array(result)
     df = pd.DataFrame(result.T, columns=['mean_%d'%i for i in range(num_datasets)]) 
+    # set index
+    df['repeat'] = df.index + 1 
+    df = df.set_index(['repeat']) 
     return df
