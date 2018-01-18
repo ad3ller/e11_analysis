@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import IPython
 from warnings import warn
+from datetime import datetime
 from tqdm import tqdm
 from .tools import utf8_attrs
 
@@ -188,13 +189,13 @@ class H5Data(object):
                 return tuple(data[squid_str].keys())
 
     ## array data (e.g., traces and images)
-    def array(self, squids, dataset, axis=0, cache=None, **kwargs):
+    def array(self, dataset, squids, axis=0, cache=None, **kwargs):
         """ load HDF5 array h5[squids][dataset] and its attributes.
 
             args:
+                dataset     name of dataset      (str)
                 squids      squid ID value(s)    (int)
                             can be a single value or a list of squid values
-                dataset     name of dataset      (str)
                 axis=0      concatenation axis   (int)
 
             kwargs:
@@ -243,7 +244,7 @@ class H5Data(object):
         return arr
 
     ## DataFrame data (e.g., stats)
-    def df(self, squids, dataset, columns=None, cache=None, **kwargs):
+    def df(self, dataset, squids, columns=None, cache=None, **kwargs):
         """ load HDF5 DataFrame data[squids][dataset][columns] and its attributes.
 
             squid can be a single value or a list of squid values.
@@ -251,8 +252,8 @@ class H5Data(object):
             If columns=None then return all columns in the dataset.
 
             args:
-                squids         ID value(s)          (int / list/ array)
                 dataset        name of dataset      (str)
+                squids         ID value(s)          (int / list/ array)
                 columns=None   names of columns     (list)
                 cache=None     cache filename       (str)
 
@@ -343,6 +344,72 @@ class H5Data(object):
         if get_info:
             return df, info
         return df
+
+    def apply(self, func, dataset, squids=None, cache=None, **kwargs):
+        """ apply func to [squids][dataset(s)].
+
+        args:
+            squids=None    If squids is None, return data from ALL squids.
+            cache=None     If cache is not None, save result to h5.out_dire/[cache].vr.pkl,
+                           or read from the file if it already exists.
+
+        kwargs:
+            info=False     Get settings and information.
+            update=False   If update then overwrite cached file.
+            
+        result:
+            func(datasets, **kwargs), [info]
+        """
+        tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
+        get_info = kwargs.get('info', False)
+        update = kwargs.get('update', False)
+        # load cached file
+        if cache is not None:
+            if self.out_dire is None:
+                raise Exception('cannot cache file without out_dire')
+            fname = (os.path.splitext(cache)[0]) + '.' + func.__name__ + '.pkl'
+            cache_file = os.path.join(self.out_dire, fname)
+        if not update and cache is not None and os.path.isfile(cache_file):
+            result, info = pd.read_pickle(cache_file)
+        # apply func to data
+        else:
+            if squids is None:
+                # use all squid values
+                squids = self.squids
+            if not isinstance(dataset, list):
+                dataset = [dataset]
+            # record information about processing
+            info = dict()
+            info['squids'] = squids
+            info['function'] = func.__name__
+            info['dataset'] = dataset
+            info['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            # setup output df
+            result = []
+            # open file
+            with h5py.File(self.fil, 'r') as dfil:
+                # loop over each squid
+                for sq in tqdm(squids, unit='sq', **tqdm_kwargs):
+                    squid_str = str(sq)
+                    if all([ds in dfil[squid_str] for ds in dataset]): 
+                        data = [dfil[squid_str][ds] for ds in dataset]   
+                        df = func(data, **kwargs)
+                        df['repeat'] = df.index + 1 
+                        df['squid'] = sq 
+                        result.append(df)
+            num_sq = len(result)
+            if num_sq == 0:
+                raise Exception('No data found for '+ dataset + '.')
+            result = pd.concat(result, ignore_index=True)
+            result = result.set_index(['squid', 'repeat'])
+            # output
+            if cache is not None:
+                obj = (result, info)
+                pd.to_pickle(obj, cache_file)
+        if get_info:
+            return result, info
+        # otherwise
+        return result
 
     ## pickle things into/ out of out_dire
     def ls(self, full=False, report=False):

@@ -4,12 +4,8 @@ Created on Tue Nov 28 16:49:52 2017
 
 @author: Adam
 """
-import os
-import h5py
 import numpy as np
 import pandas as pd
-from datetime import datetime
-from tqdm import tqdm
 
 def statistics(df, groupby='squid', **kwargs):
     """ Calculate the mean and standard error for a DataFrame grouped by groupby.
@@ -82,158 +78,122 @@ def statistics(df, groupby='squid', **kwargs):
 
 # process array data
 
-def vrange(h5, dataset, squids=None, axis=1, window=None, cache=None, **kwargs):
-    """ Calculate the vertical range of an array dataset, e.g., traces or images.
+def vrange(data, **kwargs):
+    """ Calculate the vertical range for an array dataset.
 
         args:
-            squids=None    If squids is None, return data from ALL squids.
+            data           h5.dataset
+        
+        kwargs:
             axis=1         Apply along axis=axis.
             window=None    Tuple of (start, end) indexes of data to analyse.
-            cache=None     If cache is not None, save result to h5.out_dire/[cache].vr.pkl,
-                           or read from the file if it already exists.
-
-        kwargs:
-            info=False     Get settings and information.
-            update=False   If update then overwrite cached file.
-    """
-    tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
-    get_info = kwargs.get('info', False)
-    update = kwargs.get('update', False)
-    # load cached file
-    if cache is not None and h5.out_dire is not None:
-        cache_file = (os.path.splitext(cache)[0]) + '.vr.pkl'
-        cache_file = os.path.join(h5.out_dire, cache_file)
-    if not update and cache is not None and os.path.isfile(cache_file):
-        df, info = pd.read_pickle(cache_file)
-    # compute vrange from raw data
-    else:
-        if squids is None:
-            # use all squid values
-            squids = h5.squids
-        # record information about processing
-        info = dict()
-        info['squids'] = squids
-        info['function'] = 'process.vrange()'
-        info['dataset'] = dataset
-        info['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        # setup output df
-        data = []
-        # open file
-        with h5py.File(h5.fil, 'r') as dfil:
-            # loop over each squid
-            for sq in tqdm(squids, unit='sq', **tqdm_kwargs):
-                squid_str = str(sq)
-                if dataset in dfil[squid_str]:
-                    arr = np.array(dfil[squid_str][dataset])
-                    ndims = len(np.shape(arr))
-                    if  ndims > 2:
-                        # flatten to last dimensions, e.g., for images
-                        arr = arr.reshape(-1, arr.shape[-1]).T
-                    if arr.dtype == 'int8' or arr.dtype == 'int16':
-                        # int8 and int16 are too restrictive
-                        arr = arr.astype(int)
-                    if window is not None:
-                        # array subset
-                        arr = arr[:, window[0]:window[1]]
-                    rng = np.max(arr, axis=axis) - np.min(arr, axis=axis)
-                    tmp = pd.DataFrame(rng, columns=['vrange'])
-                    tmp['repeat'] = tmp.index
-                    tmp['squid'] = sq
-                    data.append(tmp)
-        num_sq = len(data)
-        if num_sq == 0:
-            raise Exception('No data found for '+ dataset + '.')
-        df = pd.concat(data, ignore_index=True)
-        df = df.set_index(['squid', 'repeat'])
-        # output
-        if cache is not None:
-            obj = (df, info)
-            pd.to_pickle(obj, cache_file)
-    if get_info:
-        return df, info
-    # otherwise
+                           2D datasets only, e.g., repeat oscilloscope traces.
+            
+        return:
+            vrange pd.DataFrame(index=repeat)
+    """ 
+    axis = kwargs.get('axis', 1)
+    window = kwargs.get('window', None)
+    if not isinstance(data, list):
+        data = [data]
+    num_datasets = len(data)
+    result = []
+    for ds in data:
+        arr = np.array(ds)
+        ndims = len(np.shape(arr))
+        if  ndims > 2:
+            # flatten to last dimensions, e.g., for images
+            arr = arr.reshape(-1, arr.shape[-1]).T
+        if arr.dtype == 'int8' or arr.dtype == 'int16':
+            # int8 and int16 are too restrictive
+            arr = arr.astype(int)
+        if window is not None:
+            if ndims != 2:
+                raise Exception('kwarg `window` can only be used with 2D array datasets.')
+            # array subset
+            arr = arr[:, window[0]:window[1]]
+        rng = np.max(arr, axis=axis) - np.min(arr, axis=axis)
+        result.append(rng)
+    result = np.array(result)
+    df = pd.DataFrame(result.T, columns=['vrange_%d'%i for i in range(num_datasets)]) 
     return df
 
-def winsum(h5, dataset, window=(0,-1), squids=None, cache=None, **kwargs):
-    """ Index an array dataset using a given window and sum along axis=1.
+def total(data, **kwargs):
+    """ Calculate the total value for an array dataset.
 
         args:
-            squids=None    If squids is None, return data from ALL squids.
-            window=(0, -1)
-                           Tuple or a list of tuples of (start, end) indexes that define the windows.
-            cache=None     If cache is not None, save result to h5.out_dire/[cache].ws.pkl,
-                           or read from the file if it already exists.
-
+            data           h5.dataset
+        
         kwargs:
-            info=False     Get settings and information.
-            mean=False     Divide the window sum by the window size (i.e., calculate the mean).
-            update=False   If update and fname exists then overwrite cached file.
-    """
-    tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
-    get_info = kwargs.get('info', False)
-    update = kwargs.get('update', False)
-    mean = kwargs.get('mean', False)
-    if isinstance(window, tuple):
-        window = [window]
-    # load cached file
-    if cache is not None and h5.out_dire is not None:
-        cache_file = (os.path.splitext(cache)[0]) + '.ws.pkl'
-        cache_file = os.path.join(h5.out_dire, cache_file)
-    if not update and cache is not None and os.path.isfile(cache_file):
-        df, info = pd.read_pickle(cache_file)
-    # compute window sum from raw data
-    else:
-        if squids is None:
-            # use all squid values
-            squids = h5.squids
-        # information about processing
-        info = dict()
-        info['function'] = 'process.winsum()'
-        info['dataset'] = dataset
-        info['squids'] = squids
-        info['mean'] = mean
-        info['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        info['windows'] = window
-        # setup output df
-        data = []
-        # open file
-        with h5py.File(h5.fil, 'r') as dfil:
-            # loop over each squid
-            for sq in tqdm(squids, unit='sq', **tqdm_kwargs):
-                squid_str = str(sq)
-                if dataset in dfil[squid_str]:
-                    arr = np.array(dfil[squid_str][dataset])
-                    ndims = len(np.shape(arr))
-                    if ndims != 2:
-                        raise Exception('winsum() is designed for 2D arrays only.')
-                    if arr.dtype == 'int8' or arr.dtype == 'int16':
-                        # int8 and int16 are too restrictive
-                        arr = arr.astype(int)
-                    ws = []
-                    nv = []
-                    for win in window:
-                        win_arr = arr[:, win[0]:win[1]]
-                        num_reps, num_vals = np.shape(win_arr)
-                        nv.append(num_vals)
-                        tot = np.sum(win_arr, axis=1)
-                        if mean:
-                            tot = tot / num_vals
-                        ws.append(tot)
-                    ws = np.array(ws).T
-                    tmp = pd.DataFrame(ws, columns=window)
-                    tmp['repeat'] = tmp.index
-                    tmp['squid'] = sq
-                    data.append(tmp)
-        num_sq = len(data)
-        if num_sq == 0:
-            raise Exception('No data found for '+ dataset + '.')
-        df = pd.concat(data, ignore_index=True)
-        df = df.set_index(['squid', 'repeat'])
-        # output
-        if cache is not None and h5.out_dire is not None:
-            obj = (df, info)
-            pd.to_pickle(obj, cache_file)
-    if get_info:
-        return df, info
-    #otherwise
+            axis=1         Apply along axis=axis.
+            window=None    Tuple of (start, end) indexes of data to analyse.  
+                           2D datasets only, e.g., repeat oscilloscope traces.
+            
+        return:
+            total pd.DataFrame(index=repeat)
+    """ 
+    axis = kwargs.get('axis', 1)
+    window = kwargs.get('window', None)
+    if not isinstance(data, list):
+        data = [data]
+    num_datasets = len(data)
+    result = []
+    for ds in data:
+        arr = np.array(ds)
+        ndims = len(np.shape(arr))
+        if  ndims > 2:
+            # flatten to last dimensions, e.g., for images
+            arr = arr.reshape(-1, arr.shape[-1]).T
+        if arr.dtype == 'int8' or arr.dtype == 'int16':
+            # int8 and int16 are too restrictive
+            arr = arr.astype(int)
+        if window is not None:
+            if ndims != 2:
+                raise Exception('kwarg `window` can only be used with 2D array datasets.')
+            # array subset
+            arr = arr[:, window[0]:window[1]]
+        tot = np.sum(arr, axis=axis)
+        result.append(tot)
+    result = np.array(result)
+    df = pd.DataFrame(result.T, columns=['total_%d'%i for i in range(num_datasets)]) 
+    return df
+
+def mean(data, **kwargs):
+    """ Calculate the mean value for an array dataset.
+
+        args:
+            data           h5.dataset
+        
+        kwargs:
+            axis=1         Apply along axis=axis.
+            window=None    Tuple of (start, end) indexes of data to analyse.  
+                           2D datasets only, e.g., repeat oscilloscope traces.
+            
+        return:
+            mean pd.DataFrame(index=repeat)
+    """ 
+    axis = kwargs.get('axis', 1)
+    window = kwargs.get('window', None)
+    if not isinstance(data, list):
+        data = [data]
+    num_datasets = len(data)
+    result = []
+    for ds in data:
+        arr = np.array(ds)
+        ndims = len(np.shape(arr))
+        if  ndims > 2:
+            # flatten to last dimensions, e.g., for images
+            arr = arr.reshape(-1, arr.shape[-1]).T
+        if arr.dtype == 'int8' or arr.dtype == 'int16':
+            # int8 and int16 are too restrictive
+            arr = arr.astype(int)
+        if window is not None:
+            if ndims != 2:
+                raise Exception('kwarg `window` can only be used with 2D array datasets.')
+            # array subset
+            arr = arr[:, window[0]:window[1]]
+        av = np.mean(arr, axis=axis)
+        result.append(av)
+    result = np.array(result)
+    df = pd.DataFrame(result.T, columns=['mean_%d'%i for i in range(num_datasets)]) 
     return df
