@@ -12,7 +12,7 @@ def utf8_attrs(info):
         args:
             info   dict()
 
-        return
+        return:
             info   dict() (decoded to utf8)
     """
     for key, val in info.items():
@@ -20,8 +20,39 @@ def utf8_attrs(info):
             info[key] = val.decode('utf8')
     return info
 
+def add_index(df, name, values=None, **kwargs):
+    """ Add an index to pd.DataFrame(), e.g., for combing run data
+    
+        >>> a = add_index(a, 'rid', "20180109_181053", prepend=True)
+        >>> b = add_index(b, 'rid', "20180109_191151", prepend=True)
+        >>> c = pd.concat([a, b])
+    
+        args:
+            df             pd.DataFrame()
+            name           column to make index
+            values=None    Index value(s).
+                           Needed if column does not exist in df.
+        
+        kwargs:
+            prepend=False  If True, place new index first.
+            
+        return:
+            df             pd.DataFrame()
+        
+    """
+    prepend = kwargs.get('prepend', False)
+    if values is not None:
+        df[name] = values
+    df = df.set_index(name, append=True)
+    if prepend:
+        # move name to the front of the index
+        index_names = df.index.names.copy()
+        index_names.insert(0, index_names.pop(-1))
+        df = df.reorder_levels(index_names)
+    return df
+
 def add_column_index(df, label='', position='first'):
-    """ Add a level to MultiIndex columns.
+    """ Add a level to pd.MultiIndex columns.
 
         This can be useful when joining DataFrames with / without multiindex columns.
 

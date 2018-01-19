@@ -6,6 +6,7 @@ Created on Tue Nov 28 15:27:09 2017
 """
 import os
 import glob
+import inspect
 import re
 from functools import wraps
 from datetime import datetime
@@ -14,37 +15,45 @@ import numpy as np
 import pandas as pd
 import IPython
 from tqdm import tqdm
-from .tools import utf8_attrs
+from .tools import utf8_attrs, add_index
 
-def cached(func):
-    """ cache func result as a pickle file
+def cache(func):
+    """ cache func result as a pickle file.
     """
     @wraps(func)
     def wrapper(h5, *args, **kwargs):
         """ function wrapper
         """
-        cache = kwargs.get('cache', None)
+        _cache = kwargs.get('cache', None)
         update = kwargs.get('update', False)
         get_info = kwargs.get('info', False)
         # config cache
-        if cache is not None:
+        if _cache is not None:
             if h5.out_dire is None:
                 raise Exception('cannot cache file without out_dire')
             else:
-                fname = (os.path.splitext(cache)[0]) + '.' + func.__name__ + '.pkl'
+                fname = (os.path.splitext(_cache)[0]) + '.' + func.__name__ + '.pkl'
                 cache_file = os.path.join(h5.out_dire, fname)
         # read cache ...
-        if not update and cache is not None and os.path.isfile(cache_file):
+        if not update and _cache is not None and os.path.isfile(cache_file):
             result, info = pd.read_pickle(cache_file)
             info['cache'] = cache_file
         # ... or apply func ...
         else:
-            result, info = func(h5, *args, **kwargs)
-            info['cache'] = False
+            result = func(h5, *args, **kwargs)
+            # information about cache
+            sig = inspect.signature(func)
+            arg_names = list(sig.parameters.keys())
+            arg_names = arg_names[1:-1] # drop self and kwargs
+            arg_values = [arg.__name__ if hasattr(arg, '__name__') else arg for arg in args]
+            info = dict(zip(arg_names, arg_values))
+            info['method'] = func.__name__
+            info['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             # ... and update cache.
-            if cache is not None:
+            if _cache is not None:
                 obj = (result, info)
                 pd.to_pickle(obj, cache_file)
+            info['cache'] = False
         # result
         if get_info:
             return result, info
@@ -52,7 +61,7 @@ def cached(func):
     return wrapper
 
 def run_file(base, rid, ftype="_data.h5", check=True):
-    """ build path to data file using run ID
+    """ Build path to data file using run ID
 
         base/YYYY/MM/DD/[rid]/[rid]_[ftype]
 
@@ -134,7 +143,7 @@ class H5Data(object):
 
     ## log file
     def update(self, inplace=True, **kwargs):
-        """ read squid attributes and save as log.pkl.
+        """ Read squid attributes and save as log.pkl.
         """
         tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
         with h5py.File(self.fil, 'r') as dfil:
@@ -151,7 +160,6 @@ class H5Data(object):
             #remove duplicate squid column
             log_df.drop('SQUID', axis=1, inplace=True)
             if 'DATETIME' in log_df:
-                #log_df.DATETIME = log_df.DATETIME.str.decode('utf-8')
                 log_df.DATETIME = pd.to_datetime(log_df.DATETIME)
                 log_df['ELAPSED'] = (log_df.DATETIME - log_df.DATETIME.min())
         # save to pickle file
@@ -190,7 +198,7 @@ class H5Data(object):
 
     ## squid info
     def squid_attrs(self, squid):
-        """ get group attributes
+        """ Get group attributes.
 
             args:
                 squid
@@ -207,7 +215,7 @@ class H5Data(object):
                 return utf8_attrs(dict(data[squid_str].attrs))
 
     def datasets(self, squid=1):
-        """ get group datasets
+        """ Get group datasets.
 
             args:
                 squid=1
@@ -224,7 +232,7 @@ class H5Data(object):
                 return tuple(data[squid_str].keys())
 
     def dataset_attrs(self, dataset, squid=1):
-        """ get dataset attributes
+        """ Get dataset attributes.
 
             args:
                 squid=1                            (int)
@@ -243,15 +251,14 @@ class H5Data(object):
                 return attributes
 
     ## array data (e.g., traces and images)
-    @cached
+    @cache
     def array(self, dataset, squids, axis=0, **kwargs):
-        """ load HDF5 array h5[squids][dataset] and its attributes.
+        """ Load HDF5 array h5[squids][dataset] and its attributes.
 
             args:
-                dataset     name of dataset      (str)
-                squids      squid ID value(s)    (int)
-                            can be a single value or a list of squid values
-                axis=0      concatenation axis   (int)
+                dataset     Name of dataset      (str)
+                squids      Group(s)             (int / list/ array)
+                axis=0      Concatenation axis   (int)
 
             kwargs:
                 ignore_missing=False   Don't complain if data is not found.
@@ -271,16 +278,9 @@ class H5Data(object):
         """
         tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
         ignore_missing = kwargs.get('ignore_missing', False)
-        # record information
-        info = dict()
-        info['dataset'] = dataset
-        info['squids'] = squids
-        info['axis'] = axis
-        info['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         # initialise
         if isinstance(squids, int):
             squids = [squids]
-        squids = np.sort(squids)
         arr = []
         with h5py.File(self.fil, 'r') as dfil:
             for sq in tqdm(squids, **tqdm_kwargs):
@@ -295,10 +295,10 @@ class H5Data(object):
         if 'int' in str(arr.dtype):
             # int8 and int16 is a bit restrictive
             arr = arr.astype(int)
-        return arr, info
+        return arr
 
     ## DataFrame data (e.g., stats)
-    @cached
+    @cache
     def df(self, dataset, squids, columns=None, **kwargs):
         """ load HDF5 DataFrame data[squids][dataset][columns] and its attributes.
 
@@ -314,7 +314,7 @@ class H5Data(object):
             kwargs:
                 label=None             This can be useful when merging datasets.
                                        If True, add dataset name as an index to the columns.
-                                       Or, if label type is string, then use label.
+                                       Or, if label.dtype is string, then use label.
                 ignore_missing=False   Don't complain if data is not found.
                 columns_astype_str=False
                                        Convert column names to str.
@@ -322,8 +322,8 @@ class H5Data(object):
                 cache=None     If cache is not None, save result to h5.out_dire/[cache].df.pkl,
                                or read from the file if it already exists.
                 update=False   If update then overwrite cached file.
-                info=False     Information about result. Use to check that settings of the
-                               cache match expectation.
+                info=False     Information about result. Use to inspect the settings of the
+                               cache file.
 
                 tqdm_kwargs
 
@@ -334,16 +334,9 @@ class H5Data(object):
         label = kwargs.get('label', None)
         ignore_missing = kwargs.get('ignore_missing', False)
         columns_astype_str = kwargs.get('columns_astype_str', False)
-        # record information
-        info = dict()
-        info['dataset'] = dataset
-        info['squids'] = squids
-        info['columns'] = columns
-        info['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         # initialise
         if isinstance(squids, int):
             squids = [squids]
-        squids = np.sort(squids)
         arr = []
         # open file
         with h5py.File(self.fil, 'r') as dfil:
@@ -378,11 +371,11 @@ class H5Data(object):
             lbl_0 = np.full_like(df.columns, label)
             df.columns = pd.MultiIndex.from_arrays([lbl_0, df.columns])
         # output
-        return df, info
+        return df
 
-    @cached
+    @cache
     def apply(self, func, dataset, squids, **kwargs):
-        """ apply func to [squids][dataset(s)].
+        """ Apply func to h5.[squids][dataset(s)].
 
             args:
                 func           function to apply to data   (obj)
@@ -405,15 +398,8 @@ class H5Data(object):
         # initialise
         if isinstance(squids, int):
             squids = [squids]
-        squids = np.sort(squids)
         if not isinstance(dataset, list):
             dataset = [dataset]
-        # record information about processing
-        info = dict()
-        info['squids'] = squids
-        info['function'] = func.__name__
-        info['dataset'] = dataset
-        info['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         # initialise output
         result = []
         # open file
@@ -430,17 +416,13 @@ class H5Data(object):
         if num_sq == 0:
             raise Exception('No data found for '+ dataset + '.')
         result = pd.concat(result)
-        result = result.set_index('squid', append=True)
-        # move squid to the front of the index
-        index_names = result.index.names.copy()
-        index_names.insert(0, index_names.pop(-1))
-        result = result.reorder_levels(index_names)
+        result = add_index(result, 'squid', prepend=True)
         # output
-        return result, info
+        return result
 
     ## pickle things into/ out of out_dire
     def ls(self, full=False, report=False):
-        """ list the pkl files in the output directory
+        """ List the pkl files in the output directory.
         """
         if self.out_dire is None:
             raise Exception('out_dire is None')
@@ -452,9 +434,10 @@ class H5Data(object):
         fnames = [os.path.split(f)[1] for f in fils]
         return fnames
 
-    def save(self, obj, fname, out_dire=None):
-        """  save an object as a pickle file.
+    def save(self, obj, fname, out_dire=None, **kwargs):
+        """  Save an object as a pickle file.
         """
+        force = kwargs.get('force', False)
         fname = (os.path.splitext(fname)[0]) + '.pkl'
         if out_dire is None:
             # default - the output directory
@@ -467,10 +450,17 @@ class H5Data(object):
             # relative path
             out_dire = self.sub_dire(out_dire)
         out_file = os.path.join(out_dire, fname)
-        pd.to_pickle(obj, out_file)
+        if os.path.exists(out_file) and not force:
+            response = input(out_file + ' already exists.  Overwrite? [Y/n]: ')
+            overwrite = response.upper() in ['Y', 'YES']
+            IPython.core.display.clear_output()
+            if overwrite:
+                pd.to_pickle(obj, out_file)
+        else:
+            pd.to_pickle(obj, out_file)
 
     def read(self, fname):
-        """ read an object stored in a pickle file.
+        """ Read an object stored in a pickle file.
         """
         if os.path.isabs(fname):
             # absolute path
