@@ -83,15 +83,15 @@ def vrange(data, **kwargs):
 
         args:
             data           h5.dataset
-        
+
         kwargs:
             axis=1         Apply along axis=axis.
             window=None    Tuple of (start, end) indexes of data to analyse.
                            2D datasets only, e.g., repeat oscilloscope traces.
-            
+
         return:
             vrange pd.DataFrame(index=repeat)
-    """ 
+    """
     axis = kwargs.get('axis', 1)
     window = kwargs.get('window', None)
     if not isinstance(data, list):
@@ -117,7 +117,7 @@ def vrange(data, **kwargs):
     result = np.array(result)
     df = pd.DataFrame(result.T, columns=['vrange_%d'%i for i in range(num_datasets)])
     # set index
-    df['repeat'] = df.index + 1 
+    df['repeat'] = df.index + 1
     df = df.set_index(['repeat'])
     return df
 
@@ -126,15 +126,15 @@ def total(data, **kwargs):
 
         args:
             data           h5.dataset
-        
+
         kwargs:
             axis=1         Apply along axis=axis.
-            window=None    Tuple of (start, end) indexes of data to analyse.  
+            window=None    Tuple of (start, end) indexes of data to analyse.
                            2D datasets only, e.g., repeat oscilloscope traces.
-            
+
         return:
             total pd.DataFrame(index=repeat)
-    """ 
+    """
     axis = kwargs.get('axis', 1)
     window = kwargs.get('window', None)
     if not isinstance(data, list):
@@ -160,7 +160,7 @@ def total(data, **kwargs):
     result = np.array(result)
     df = pd.DataFrame(result.T, columns=['total_%d'%i for i in range(num_datasets)])
     # set index
-    df['repeat'] = df.index + 1 
+    df['repeat'] = df.index + 1
     df = df.set_index(['repeat'])
     return df
 
@@ -169,15 +169,15 @@ def mean(data, **kwargs):
 
         args:
             data           h5.dataset
-        
+
         kwargs:
             axis=1         Apply along axis=axis.
-            window=None    Tuple of (start, end) indexes of data to analyse.  
+            window=None    Tuple of (start, end) indexes of data to analyse.
                            2D datasets only, e.g., repeat oscilloscope traces.
-            
+
         return:
             mean pd.DataFrame(index=repeat)
-    """ 
+    """
     axis = kwargs.get('axis', 1)
     window = kwargs.get('window', None)
     if not isinstance(data, list):
@@ -201,8 +201,8 @@ def mean(data, **kwargs):
         av = np.mean(arr, axis=axis)
         result.append(av)
     result = np.array(result)
-    df = pd.DataFrame(result.T, columns=['mean_%d'%i for i in range(num_datasets)]) 
+    df = pd.DataFrame(result.T, columns=['mean_%d'%i for i in range(num_datasets)])
     # set index
-    df['repeat'] = df.index + 1 
-    df = df.set_index(['repeat']) 
+    df['repeat'] = df.index + 1
+    df = df.set_index(['repeat'])
     return df
