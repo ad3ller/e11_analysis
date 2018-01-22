@@ -197,19 +197,26 @@ class H5Data(object):
         return self._rec
 
     ## squid info
-    def squid_attrs(self, squid):
+    def group_attrs(self, squid):
         """ Get group attributes.
 
             args:
-                squid
+                squid                    int/ str
 
             return:
                 h5[squid].attributes     dict()
         """
-        squid_str = str(squid)
+        # check squid
+        if isinstance(squid, str):
+            squid_str = squid
+        elif isinstance(squid, int):
+            squid_str = str(squid)
+        else:
+            raise TypeError('squid.dtype must be int or str.')
         if squid_str not in self.groups:
             raise LookupError("squid = " + squid_str + " not found.")
         else:
+            # get group attributes
             with h5py.File(self.fil, 'r') as dfil:
                 data = dfil['.']
                 return utf8_attrs(dict(data[squid_str].attrs))
