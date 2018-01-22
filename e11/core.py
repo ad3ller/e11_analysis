@@ -434,7 +434,7 @@ class H5Data(object):
         fnames = [os.path.split(f)[1] for f in fils]
         return fnames
 
-    def save(self, obj, fname, out_dire=None, **kwargs):
+    def to_pickle(self, obj, fname, out_dire=None, **kwargs):
         """  Save an object as a pickle file.
         """
         force = kwargs.get('force', False)
@@ -459,7 +459,7 @@ class H5Data(object):
         else:
             pd.to_pickle(obj, out_file)
 
-    def read(self, fname):
+    def read_pickle(self, fname):
         """ Read an object stored in a pickle file.
         """
         if os.path.isabs(fname):
