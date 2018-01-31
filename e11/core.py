@@ -15,42 +15,60 @@ import numpy as np
 import pandas as pd
 import IPython
 from tqdm import tqdm
-from .tools import utf8_attrs, add_index
+from .tools import get_tqdm_kwargs, utf8_attrs, add_index
 
-def cache(func):
-    """ cache func result as a pickle file.
+def cashew(method):
+    """ Decorator to cache method result as a pickle file. Inherits from method:
+
+        arg[0]:
+            h5             instance of H5Data()
+
+        kwargs:
+            cache=None     If cache is not None, save result to h5.cache_dire/[cache].[method].pkl,
+                           or read from the file if it already exists.
+            update=False   If update then overwrite cached file.
+            info=False     Information about result. Use to inspect the settings of the
+                           cache file.
     """
-    @wraps(func)
+    @wraps(method)
     def wrapper(h5, *args, **kwargs):
         """ function wrapper
         """
-        _cache = kwargs.get('cache', None)
+        cache = kwargs.get('cache', None)
         update = kwargs.get('update', False)
         get_info = kwargs.get('info', False)
+        # TODO check info option
+        if cache is None:
+            cache = False
+        # info
+        sig = inspect.signature(method)
+        arg_names = list(sig.parameters.keys())
+        arg_names = arg_names[1:-1] # drop self and kwargs
+        arg_values = [arg.__name__ if hasattr(arg, '__name__') else arg for arg in args]
+        info = dict(zip(arg_names, arg_values))
+        info['method'] = method.__name__
         # config cache
-        if _cache is not None:
-            if h5.out_dire is None:
-                raise Exception('cannot cache file without out_dire')
+        if cache:
+            if h5.cache_dire is None:
+                raise Exception('cannot cache file without h5.cache_dire')
+            elif isinstance(cache, bool):
+                # TODO flatten args to default cache name
+                fname = method.__name__ + '.pkl'
+            elif isinstance(cache, str):
+                fname = (os.path.splitext(cache)[0]) + '.' + method.__name__ + '.pkl'
             else:
-                fname = (os.path.splitext(_cache)[0]) + '.' + func.__name__ + '.pkl'
-                cache_file = os.path.join(h5.out_dire, fname)
+                raise Exception('kwarg cache must be str or True')
+            cache_file = os.path.join(h5.cache_dire, fname)
         # read cache ...
-        if not update and _cache is not None and os.path.isfile(cache_file):
+        if not update and cache and os.path.isfile(cache_file):
             result, info = pd.read_pickle(cache_file)
             info['cache'] = cache_file
         # ... or apply func ...
         else:
-            result = func(h5, *args, **kwargs)
-            # information about cache
-            sig = inspect.signature(func)
-            arg_names = list(sig.parameters.keys())
-            arg_names = arg_names[1:-1] # drop self and kwargs
-            arg_values = [arg.__name__ if hasattr(arg, '__name__') else arg for arg in args]
-            info = dict(zip(arg_names, arg_values))
-            info['method'] = func.__name__
+            result = method(h5, *args, **kwargs)
             info['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             # ... and update cache.
-            if _cache is not None:
+            if cache:
                 obj = (result, info)
                 pd.to_pickle(obj, cache_file)
             info['cache'] = False
@@ -117,6 +135,11 @@ class H5Data(object):
                     IPython.core.display.clear_output()
         else:
             self.out_dire = out_dire
+        # cache directory
+        if self.out_dire is None:
+            self.cache_dire = None
+        else:
+            self.cache_dire = self.sub_dire('cache')
         # datafile
         if not os.path.isfile(self.fil):
             # file not found
@@ -128,8 +151,8 @@ class H5Data(object):
             self.num_groups = len(self.groups)
             self.squids = np.sort(np.array(self.groups).astype(int))
         # build log file if missing
-        if self.out_dire is not None and log_file is not None:
-            self.log_file = os.path.join(self.out_dire, log_file)
+        if self.cache_dire is not None and log_file is not None:
+            self.log_file = os.path.join(self.cache_dire, log_file)
             if not update and os.path.exists(self.log_file):
                 self.log = pd.read_pickle(self.log_file)
             else:
@@ -143,9 +166,9 @@ class H5Data(object):
 
     ## log file
     def update(self, inplace=True, **kwargs):
-        """ Read squid attributes and save as log.pkl.
+        """ Read squid attributes and save as cache/log.pkl.
         """
-        tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
+        tqdm_kwargs = get_tqdm_kwargs(kwargs)
         with h5py.File(self.fil, 'r') as dfil:
             # read attributes from each squid
             all_vars = []
@@ -157,7 +180,7 @@ class H5Data(object):
             log_df = pd.concat(all_vars)
             log_df.index.name = 'squid'
             log_df.sort_index(inplace=True)
-            #remove duplicate squid column
+            # remove duplicate squid column
             log_df.drop('SQUID', axis=1, inplace=True)
             if 'DATETIME' in log_df:
                 log_df.DATETIME = pd.to_datetime(log_df.DATETIME)
@@ -258,7 +281,7 @@ class H5Data(object):
                 return attributes
 
     ## array data (e.g., traces and images)
-    @cache
+    @cashew
     def array(self, dataset, squids, axis=0, **kwargs):
         """ Load HDF5 array h5[squids][dataset] and its attributes.
 
@@ -270,7 +293,7 @@ class H5Data(object):
             kwargs:
                 ignore_missing=False   Don't complain if data is not found.
 
-                cache=None     If cache is not None, save result to h5.out_dire/[cache].array.pkl,
+                cache=None     If cache is not None, save result to h5.cache_dire/[cache].array.pkl,
                                or read from the file if it already exists.
                 update=False   If update then overwrite cached file.
                 info=False     Information about result. Use to check that settings of the
@@ -283,7 +306,7 @@ class H5Data(object):
 
             Nb. For stacking images from multiple squids use axis=2.
         """
-        tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
+        tqdm_kwargs = get_tqdm_kwargs(kwargs)
         ignore_missing = kwargs.get('ignore_missing', False)
         # initialise
         if isinstance(squids, int):
@@ -305,7 +328,7 @@ class H5Data(object):
         return arr
 
     ## DataFrame data (e.g., stats)
-    @cache
+    @cashew
     def df(self, dataset, squids, columns=None, **kwargs):
         """ load HDF5 DataFrame data[squids][dataset][columns] and its attributes.
 
@@ -326,7 +349,7 @@ class H5Data(object):
                 columns_astype_str=False
                                        Convert column names to str.
 
-                cache=None     If cache is not None, save result to h5.out_dire/[cache].df.pkl,
+                cache=None     If cache is not None, save result to h5.cache_dire/[cache].df.pkl,
                                or read from the file if it already exists.
                 update=False   If update then overwrite cached file.
                 info=False     Information about result. Use to inspect the settings of the
@@ -337,7 +360,7 @@ class H5Data(object):
             return:
                 df (pd.DataFrame) [info (dict)]
         """
-        tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
+        tqdm_kwargs = get_tqdm_kwargs(kwargs)
         label = kwargs.get('label', None)
         ignore_missing = kwargs.get('ignore_missing', False)
         columns_astype_str = kwargs.get('columns_astype_str', False)
@@ -380,7 +403,7 @@ class H5Data(object):
         # output
         return df
 
-    @cache
+    @cashew
     def apply(self, func, dataset, squids, **kwargs):
         """ Apply func to h5.[squids][dataset(s)].
 
@@ -390,7 +413,7 @@ class H5Data(object):
                 squids         group(s)                    (int / list/ array)
 
             kwargs:
-                cache=None     If cache is not None, save result to h5.out_dire/[cache].apply.pkl,
+                cache=None     If cache is not None, save result to h5.cache_dire/[cache].apply.pkl,
                                or read from the file if it already exists.
                 update=False   If update then overwrite cached file.
                 info=False     Information about result. Use to check that settings of the
@@ -401,7 +424,7 @@ class H5Data(object):
             result:
                 func(datasets, **kwargs), [info]
         """
-        tqdm_kwargs = dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
+        tqdm_kwargs = get_tqdm_kwargs(kwargs)
         # initialise
         if isinstance(squids, int):
             squids = [squids]
@@ -428,35 +451,56 @@ class H5Data(object):
         return result
 
     ## pickle things into/ out of out_dire
-    def ls(self, full=False, report=False):
-        """ List the pkl files in the output directory.
+    def ls(self, dire=None, regex='*', full=False, report=False):
+        """ List the contents of out_dire/[dire=None].
+
+            e.g., to list pickle files in the cache,
+                h5.ls(dire='cache', regex='*.pkl')
         """
-        if self.out_dire is None:
-            raise Exception('out_dire is None')
-        fils = glob.glob(os.path.join(self.out_dire, '*.pkl'))
+        # initial check
+        if self.out_dire is None and dire is None:
+            raise Exception('h5.out_dire and arg dire can`t both be None')
+        # folder
+        if dire is None:
+            # default - the output directory
+            folder = self.out_dire
+        elif os.path.isabs(dire):
+            # absolute path
+            folder = dire
+        else:
+            # relative path
+            folder = os.path.join(self.out_dire, dire)
+        # check exists
+        if not os.path.isdir(folder):
+            raise Exception(folder + ' does not exist.')
+        fils = glob.glob(os.path.join(folder, regex))
         if report:
-            print('Found %d *.pkl files in %s'%(len(fils), self.out_dire))
+            print('Found %d matches to %s in `%s`'%(len(fils), regex, folder))
         if full:
             return fils
         fnames = [os.path.split(f)[1] for f in fils]
         return fnames
 
-    def to_pickle(self, obj, fname, out_dire=None, **kwargs):
+    def to_pickle(self, obj, fname, dire=None, **kwargs):
         """  Save an object as a pickle file.
         """
         force = kwargs.get('force', False)
         fname = (os.path.splitext(fname)[0]) + '.pkl'
-        if out_dire is None:
+        # folder
+        if dire is None:
             # default - the output directory
-            out_dire = self.out_dire
-        elif os.path.isabs(out_dire):
+            folder = self.out_dire
+        elif os.path.isabs(dire):
             # absolute path
-            if not os.path.isdir(out_dire):
-                raise Exception(out_dire + ' does not exist.')
+            folder = dire
         else:
             # relative path
-            out_dire = self.sub_dire(out_dire)
-        out_file = os.path.join(out_dire, fname)
+            folder = self.sub_dire(dire)
+        # check
+        if not os.path.isdir(folder):
+            raise Exception(folder + ' does not exist.')
+        # file
+        out_file = os.path.join(folder, fname)
         if os.path.exists(out_file) and not force:
             response = input(out_file + ' already exists.  Overwrite? [Y/n]: ')
             overwrite = response.upper() in ['Y', 'YES']
@@ -466,17 +510,24 @@ class H5Data(object):
         else:
             pd.to_pickle(obj, out_file)
 
-    def read_pickle(self, fname):
+    def read_pickle(self, fname, dire=None):
         """ Read an object stored in a pickle file.
         """
         if os.path.isabs(fname):
             # absolute path
             fil = fname
-        elif self.out_dire is None:
-            raise Exception('out_dire is None')
         else:
-            #relative path
-            fil = os.path.join(self.out_dire, fname)
+            if dire is None:
+                folder = self.out_dire
+            elif os.path.isabs(dire):
+                # dire is absolute path
+                folder = dire
+            elif self.out_dire is None:
+                raise Exception('out_dire is None')
+            else:
+                # relative path
+                folder = os.path.join(self.out_dire, dire)
+            fil = os.path.join(folder, fname)
         # check
         if not os.path.isfile(fil):
             raise Exception(fname + ' does not exist or not a file.')
@@ -484,12 +535,12 @@ class H5Data(object):
         return obj
 
     ## misc. tools
-    def sub_dire(self, sub_dire, fname=None):
+    def sub_dire(self, dire, fname=None):
         """ Build path to a sub-directory of h5.out_dire.  Create if does not exist."""
         if self.out_dire is None:
             raise Exception('Cannot build h5.sub_dire because h5.out_dire is None.')
         else:
-            path = os.path.join(self.out_dire, sub_dire)
+            path = os.path.join(self.out_dire, dire)
             if not os.path.exists(path):
                 os.makedirs(path)
             if fname is not None:
@@ -506,3 +557,72 @@ class H5Data(object):
                   "author: \t %s \n" + \
                   "description: \t %s")%(self.fil, self.size*1e-6, self.num_groups, author, desc)
         print(output)
+
+def statistics(df, groupby='squid', **kwargs):
+    """ Calculate the mean and standard error for a DataFrame grouped by groupby.
+
+        The output is simular to
+
+        >>> df.groupby('squid').describe()
+
+        args:
+            df                 pd.DataFrame()
+            groupby='squid'    str/ list/ np.array()
+
+        kwargs:
+            mode='basic'
+                           'count'  = count
+                           'abbr'   = mean, err
+                           'basic'  = + std, count
+                           'full'   = + min, max, median and range
+
+        return:
+            pd.DataFrame()
+    """
+    mode = kwargs.get('mode', 'basic')
+    #check Series or DataFrame
+    if isinstance(df, pd.Series):
+        df_columns = [df.name]
+    elif isinstance(df, pd.DataFrame):
+        df_columns = df.columns.values
+    else:
+        raise Exception('df must be a pandas.Series or pandas.DataFrame.')
+    # remove groupby elements from output columns
+    df_columns = [c for c in df_columns if c not in list(groupby)]
+    # prevent exeption being raised if list of length==1 is passed to groupby
+    if not isinstance(groupby, str):
+        if len(groupby) == 1:
+            groupby = groupby[0]
+        else:
+            groupby = list(groupby)
+    gr = df.groupby(groupby)
+    # output
+    if mode == 'count':
+        red = [gr.count()]
+        stat_columns = ['count']
+    elif mode == 'abbr':
+        red = [gr.mean(), gr.std() * gr.count()**-0.5]
+        stat_columns = ['mean', 'err']
+    elif mode == 'basic':
+        red = [gr.count(), gr.mean(), gr.std(), gr.std() * gr.count()**-0.5]
+        stat_columns = ['count', 'mean', 'std', 'err']
+    elif mode == 'full':
+        red = [gr.count(), gr.mean(), gr.std(), gr.std() * gr.count()**-0.5,
+               gr.max(), gr.min(), gr.max() - gr.min(), gr.median()]
+        stat_columns = ['count', 'mean', 'std', 'err', 'max', 'min', 'range', 'median']
+    else:
+        raise Exception('kwarg mode=' + mode + ' is not valid.')
+    # MultiIndex column names
+    new_columns = []
+    for sc in stat_columns:
+        for cc in df_columns:
+            if not isinstance(cc, tuple):
+                cc = (cc,)
+            tc = cc + (sc,)
+            new_columns.append(tc)
+    # combine measurements
+    av = pd.concat(red, axis=1)
+    av.columns = pd.MultiIndex.from_tuples(new_columns)
+    # sort columns
+    av = av[np.sort(av.columns.values)]
+    return av
