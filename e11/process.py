@@ -22,8 +22,8 @@ def vrange(data, **kwargs):
             axis=1         Apply along axis=axis.
             window=None    Tuple of (start, end) indexes of data to analyse.
                            2D datasets only, e.g., repeat oscilloscope traces.
-            labels='mean' 
-                           Column labels. dtype must be str or iterable.
+            label='mean' 
+                           Output column label(s). dtype must be str or iterable.
 
         return:
             vrange pd.DataFrame(index=repeat)
@@ -68,8 +68,8 @@ def total(data, **kwargs):
             axis=1         Apply along axis=axis.
             window=None    Tuple of (start, end) indexes of data to analyse.
                            2D datasets only, e.g., repeat oscilloscope traces.
-            labels='mean' 
-                           Column labels. dtype must be str or iterable.
+            label='mean' 
+                           Output column label(s). dtype must be str or iterable.
 
         return:
             total pd.DataFrame(index=repeat)
@@ -114,8 +114,8 @@ def mean(data, **kwargs):
             axis=1         Apply along axis=axis.
             window=None    Tuple of (start, end) indexes of data to analyse.
                            2D datasets only, e.g., repeat oscilloscope traces.
-            labels='mean' 
-                           Column labels. dtype must be str or iterable.
+            label='mean' 
+                           Output column label(s). dtype must be str or iterable.
 
         return:
             mean pd.DataFrame(index=repeat)
