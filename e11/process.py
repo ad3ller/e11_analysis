@@ -9,28 +9,30 @@ Functions for use with H5Data.apply()
 """
 import numpy as np
 import pandas as pd
+from e11.tools import clabel
 
 # process array data
-
 def vrange(data, **kwargs):
     """ Calculate the vertical range for an array dataset.
 
         args:
-            data           h5.dataset
+            data           [np.array]
 
         kwargs:
             axis=1         Apply along axis=axis.
             window=None    Tuple of (start, end) indexes of data to analyse.
                            2D datasets only, e.g., repeat oscilloscope traces.
+            labels='mean' 
+                           Column labels. dtype must be str or iterable.
 
         return:
             vrange pd.DataFrame(index=repeat)
     """
     axis = kwargs.get('axis', 1)
     window = kwargs.get('window', None)
+    label = kwargs.get('label', 'vrange')
     if not isinstance(data, list):
         data = [data]
-    num_datasets = len(data)
     result = []
     for ds in data:
         arr = np.array(ds)
@@ -49,31 +51,34 @@ def vrange(data, **kwargs):
         rng = np.max(arr, axis=axis) - np.min(arr, axis=axis)
         result.append(rng)
     result = np.array(result)
-    df = pd.DataFrame(result.T, columns=['vrange_%d'%i for i in range(num_datasets)])
+    df = pd.DataFrame(result.T)
+    df = clabel(df, label)
     # set index
-    df['repeat'] = df.index + 1
-    df = df.set_index(['repeat'])
+    df['measurement'] = df.index + 1
+    df = df.set_index(['measurement'])
     return df
 
 def total(data, **kwargs):
     """ Calculate the total value for an array dataset.
 
         args:
-            data           h5.dataset
+            data           [np.array]
 
         kwargs:
             axis=1         Apply along axis=axis.
             window=None    Tuple of (start, end) indexes of data to analyse.
                            2D datasets only, e.g., repeat oscilloscope traces.
+            labels='mean' 
+                           Column labels. dtype must be str or iterable.
 
         return:
             total pd.DataFrame(index=repeat)
     """
     axis = kwargs.get('axis', 1)
     window = kwargs.get('window', None)
+    label = kwargs.get('label', 'total')
     if not isinstance(data, list):
         data = [data]
-    num_datasets = len(data)
     result = []
     for ds in data:
         arr = np.array(ds)
@@ -92,31 +97,34 @@ def total(data, **kwargs):
         tot = np.sum(arr, axis=axis)
         result.append(tot)
     result = np.array(result)
-    df = pd.DataFrame(result.T, columns=['total_%d'%i for i in range(num_datasets)])
+    df = pd.DataFrame(result.T)
+    df = clabel(df, label)
     # set index
-    df['repeat'] = df.index + 1
-    df = df.set_index(['repeat'])
+    df['measurement'] = df.index + 1
+    df = df.set_index(['measurement'])
     return df
 
 def mean(data, **kwargs):
     """ Calculate the mean value for an array dataset.
 
         args:
-            data           h5.dataset
+            data           [np.array]
 
         kwargs:
             axis=1         Apply along axis=axis.
             window=None    Tuple of (start, end) indexes of data to analyse.
                            2D datasets only, e.g., repeat oscilloscope traces.
+            labels='mean' 
+                           Column labels. dtype must be str or iterable.
 
         return:
             mean pd.DataFrame(index=repeat)
     """
     axis = kwargs.get('axis', 1)
     window = kwargs.get('window', None)
+    label = kwargs.get('label', 'mean')
     if not isinstance(data, list):
         data = [data]
-    num_datasets = len(data)
     result = []
     for ds in data:
         arr = np.array(ds)
@@ -135,8 +143,9 @@ def mean(data, **kwargs):
         av = np.mean(arr, axis=axis)
         result.append(av)
     result = np.array(result)
-    df = pd.DataFrame(result.T, columns=['mean_%d'%i for i in range(num_datasets)])
+    df = pd.DataFrame(result.T)
+    df = clabel(df, label)
     # set index
-    df['repeat'] = df.index + 1
-    df = df.set_index(['repeat'])
+    df['measurement'] = df.index + 1
+    df = df.set_index(['measurement'])
     return df

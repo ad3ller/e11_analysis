@@ -4,7 +4,19 @@ Created on Fri Jan 12 16:01:32 2018
 
 @author: Adam
 """
+from numbers import Number
+from collections import Iterable
 import pandas as pd
+
+def t_index(time, dt, t0=0.0):
+    """ convert time to index using dt [and t0].
+    """
+    if isinstance(time, Number):
+        return int(round((time - t0) / dt))
+    elif isinstance(time, Iterable):
+        return tuple(int(round((t - t0) / dt)) for t in time)
+    else:
+        raise TypeError("time must be a number or list of numbers.")
 
 def get_tqdm_kwargs(kwargs):
     """ filter kwargs to those prepended by `tqdm_` and strip.
@@ -27,23 +39,23 @@ def utf8_attrs(info):
 
 def add_index(df, name, values=None, **kwargs):
     """ Add an index to pd.DataFrame(), e.g., for combing run data
-    
+
         >>> a = add_index(a, 'rid', "20180109_181053", prepend=True)
         >>> b = add_index(b, 'rid', "20180109_191151", prepend=True)
         >>> c = pd.concat([a, b])
-    
+
         args:
             df             pd.DataFrame()
             name           column to make index
             values=None    Index value(s).
                            Needed if column does not exist in df.
-        
+
         kwargs:
             prepend=False  If True, place new index first.
-            
+
         return:
             df             pd.DataFrame()
-        
+
     """
     prepend = kwargs.get('prepend', False)
     if values is not None:
@@ -106,4 +118,27 @@ def rescale(arr, yscale, yoffset):
     """ rescale = arr * yscale + yoffset
     """
     return arr * yscale + yoffset
-    
+
+def clabel(df, label):
+    """ Relable columns of a DataFrame.
+
+        args:
+            df             pd.DataFrame
+            labels=None    Column labels.  Defaults to func.__name__.
+                           dtype must be str or iterable.
+    """
+    cols = df.columns
+    if isinstance(label, str):
+        if len(cols) > 1:
+            new_cols = [label + "_" + str(c) for c in cols]
+        else:
+            new_cols = [label]
+    elif isinstance(label, Iterable):
+        if len(label) == len(df.columns):
+            new_cols = label
+        else:
+            raise TypeError('length of label must match number of columns')
+    else:
+        raise TypeError('label must be str or iterable')
+    df.columns = new_cols
+    return df

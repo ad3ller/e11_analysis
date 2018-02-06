@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='e11',
-      version='0.0.7',
+      version='0.0.8',
       description='process data from experiments',
       url='',
       author='Adam Deller',
