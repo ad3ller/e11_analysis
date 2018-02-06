@@ -9,7 +9,7 @@ Functions for use with H5Data.apply()
 """
 import numpy as np
 import pandas as pd
-from e11.tools import clabel
+from .tools import clabel
 
 # process array data
 def vrange(data, **kwargs):
