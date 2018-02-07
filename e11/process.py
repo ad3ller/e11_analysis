@@ -9,6 +9,7 @@ Functions for use with H5Data.apply()
 """
 import numpy as np
 import pandas as pd
+from .core import MEASUREMENT_ID
 from .tools import clabel
 
 # process array data
@@ -54,8 +55,7 @@ def vrange(data, **kwargs):
     df = pd.DataFrame(result.T)
     df = clabel(df, label)
     # set index
-    df['measurement'] = df.index + 1
-    df = df.set_index(['measurement'])
+    df.index.rename(MEASUREMENT_ID, inplace=True)
     return df
 
 def total(data, **kwargs):
@@ -100,8 +100,7 @@ def total(data, **kwargs):
     df = pd.DataFrame(result.T)
     df = clabel(df, label)
     # set index
-    df['measurement'] = df.index + 1
-    df = df.set_index(['measurement'])
+    df.index.rename(MEASUREMENT_ID, inplace=True)
     return df
 
 def mean(data, **kwargs):
@@ -146,6 +145,5 @@ def mean(data, **kwargs):
     df = pd.DataFrame(result.T)
     df = clabel(df, label)
     # set index
-    df['measurement'] = df.index + 1
-    df = df.set_index(['measurement'])
+    df.index.rename(MEASUREMENT_ID, inplace=True)
     return df

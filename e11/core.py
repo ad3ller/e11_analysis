@@ -32,6 +32,9 @@ import IPython
 from tqdm import tqdm
 from .tools import get_tqdm_kwargs, utf8_attrs, add_index
 
+# constants
+MEASUREMENT_ID = 'measurement'
+
 def run_file(base, rid, ftype="_data.h5", check=True):
     """ Build path to data file using run ID
 
@@ -249,12 +252,9 @@ class H5Scan(object):
                     df = pd.DataFrame(np.array(dfil[dataset]))
                 else:
                     df = pd.DataFrame(np.array(dfil[dataset]))[columns]
-                num_rows = len(df.index.values)
-                if num_rows > 0:
-                    df['measurement'] = df.index + 1
             else:
                 raise Exception("Error: " + dataset + " not found.")
-        df = df.set_index(['measurement'])
+        df.index.rename(MEASUREMENT_ID, inplace=True)
         # convert column names to str
         if columns_astype_str:
             df.columns = np.array(df.columns.values).astype(str)
@@ -560,7 +560,7 @@ class H5Data(object):
                         tmp = pd.DataFrame(np.array(dfil[squid_str][dataset]))[columns]
                     num_rows = len(tmp.index.values)
                     if num_rows > 0:
-                        tmp['measurement'] = tmp.index + 1
+                        tmp[MEASUREMENT_ID] = tmp.index
                         tmp['squid'] = sq
                         arr.append(tmp)
                 elif not ignore_missing:
@@ -570,7 +570,7 @@ class H5Data(object):
         if num_df == 0:
             raise Exception('No datasets found')
         df = pd.concat(arr, ignore_index=True)
-        df = df.set_index(['squid', 'measurement'])
+        df = df.set_index(['squid', MEASUREMENT_ID])
         # convert column names to str
         if columns_astype_str:
             df.columns = np.array(df.columns.values).astype(str)
