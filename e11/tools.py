@@ -4,9 +4,31 @@ Created on Fri Jan 12 16:01:32 2018
 
 @author: Adam
 """
+import os
+import glob
 from numbers import Number
 from collections import Iterable
 import pandas as pd
+
+def ls(dire, regex='*', full_output=True, report=False):
+    """ List the contents of dire.
+
+        e.g., to list pickle files in the cache,
+            ls(h5.cache_dire, regex='*.pkl')
+    """
+    # folder
+    if dire is None:
+        raise Exception('can`t read from None directory')
+    # check exists
+    if not os.path.isdir(dire):
+        raise Exception(dire + ' does not exist.')
+    fils = glob.glob(os.path.join(dire, regex))
+    if report:
+        print('Found %d matches to %s in `%s`'%(len(fils), regex, dire))
+    if full_output:
+        return fils
+    fnames = [os.path.split(f)[1] for f in fils]
+    return fnames
 
 def t_index(time, dt, t0=0.0):
     """ convert time to index using dt [and t0].

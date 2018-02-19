@@ -6,21 +6,20 @@ Created on Tue Nov 28 15:27:09 2017
 
     run_file()
         - function to build path to a run file
-    
-    cashew()  
+
+    cashew()
         - caching wrapper
-       
+
     H5Scan
         - class for accessing hdf5 files without groups
-    
+
     H5Data
         - class for accessing hdf5 files with groups
-        
+
     statistics()
         - function for analysing pd.DataFrames
 """
 import os
-import glob
 import inspect
 import re
 from functools import wraps
@@ -36,9 +35,14 @@ from .tools import get_tqdm_kwargs, utf8_attrs, add_index
 MEASUREMENT_ID = 'measurement'
 
 def run_file(base, rid, ftype="_data.h5", check=True):
-    """ Build path to data file using run ID
+    """ Build path to data file using run ID.
 
-        base/YYYY/MM/DD/[rid]/[rid]_[ftype]
+        base/YYYY/MM/DD/[rid]/[rid][ftype]
+    
+        Usually the run ID will be a complete timestamp or the date appended by a 
+        padded integer, e.g.,
+
+            YYYYMMDD_hhmmss, or YYYYMMDD_001.
 
         args:
             base
@@ -630,90 +634,6 @@ class H5Data(object):
         # output
         return result
 
-    ## pickle things into/ out of out_dire
-    def ls(self, dire=None, regex='*', full=False, report=False):
-        """ List the contents of out_dire/[dire=None].
-
-            e.g., to list pickle files in the cache,
-                h5.ls(dire='cache', regex='*.pkl')
-        """
-        # initial check
-        if self.out_dire is None and dire is None:
-            raise Exception('h5.out_dire and arg dire can`t both be None')
-        # folder
-        if dire is None:
-            # default - the output directory
-            folder = self.out_dire
-        elif os.path.isabs(dire):
-            # absolute path
-            folder = dire
-        else:
-            # relative path
-            folder = os.path.join(self.out_dire, dire)
-        # check exists
-        if not os.path.isdir(folder):
-            raise Exception(folder + ' does not exist.')
-        fils = glob.glob(os.path.join(folder, regex))
-        if report:
-            print('Found %d matches to %s in `%s`'%(len(fils), regex, folder))
-        if full:
-            return fils
-        fnames = [os.path.split(f)[1] for f in fils]
-        return fnames
-
-    def to_pickle(self, obj, fname, dire=None, **kwargs):
-        """  Save an object as a pickle file.
-        """
-        force = kwargs.get('force', False)
-        fname = (os.path.splitext(fname)[0]) + '.pkl'
-        # folder
-        if dire is None:
-            # default - the output directory
-            folder = self.out_dire
-        elif os.path.isabs(dire):
-            # absolute path
-            folder = dire
-        else:
-            # relative path
-            folder = self.sub_dire(dire)
-        # check
-        if not os.path.isdir(folder):
-            raise Exception(folder + ' does not exist.')
-        # file
-        out_file = os.path.join(folder, fname)
-        if os.path.exists(out_file) and not force:
-            response = input(out_file + ' already exists.  Overwrite? [Y/n]: ')
-            overwrite = response.upper() in ['Y', 'YES']
-            IPython.core.display.clear_output()
-            if overwrite:
-                pd.to_pickle(obj, out_file)
-        else:
-            pd.to_pickle(obj, out_file)
-
-    def read_pickle(self, fname, dire=None):
-        """ Read an object stored in a pickle file.
-        """
-        if os.path.isabs(fname):
-            # absolute path
-            fil = fname
-        else:
-            if dire is None:
-                folder = self.out_dire
-            elif os.path.isabs(dire):
-                # dire is absolute path
-                folder = dire
-            elif self.out_dire is None:
-                raise Exception('out_dire is None')
-            else:
-                # relative path
-                folder = os.path.join(self.out_dire, dire)
-            fil = os.path.join(folder, fname)
-        # check
-        if not os.path.isfile(fil):
-            raise Exception(fname + ' does not exist or not a file.')
-        obj = pd.read_pickle(fil)
-        return obj
-
     ## misc. tools
     def sub_dire(self, dire, fname=None):
         """ Build path to a sub-directory of h5.out_dire.  Create if does not exist."""
@@ -737,6 +657,8 @@ class H5Data(object):
                   "author: \t %s \n" + \
                   "description: \t %s")%(self.fil, self.size*1e-6, self.num_groups, author, desc)
         print(output)
+
+## TOOLS ##
 
 def statistics(df, groupby='squid', **kwargs):
     """ Calculate the mean and standard error for a DataFrame grouped by groupby.
