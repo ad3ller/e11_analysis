@@ -174,13 +174,13 @@ class H5Scan(object):
 
     ## squid info
     def dataset_attrs(self, dataset):
-        """ Get group attributes.
+        """ Get dataset attributes.
 
             args:
                 dataset                    str
 
             return:
-                h5[dataset ].attributes    dict()
+                h5[dataset].attributes    dict()
         """
         if dataset not in self.datasets:
             raise LookupError("squid = " + dataset + " not found.")
