@@ -188,7 +188,6 @@ class H5Scan(object):
                 data = dfil['.']
                 return utf8_attrs(dict(data[dataset].attrs))
 
-
     ## array data (e.g., traces and images)
     @cashew
     def array(self, dataset, **kwargs):
