@@ -23,7 +23,7 @@ def vrange(data, **kwargs):
             axis=1         Apply along axis=axis.
             window=None    Tuple of (start, end) indexes of data to analyse.
                            2D datasets only, e.g., repeat oscilloscope traces.
-            label='mean' 
+            label='vrange' 
                            Output column label(s). dtype must be str or iterable.
 
         return:
@@ -68,7 +68,7 @@ def total(data, **kwargs):
             axis=1         Apply along axis=axis.
             window=None    Tuple of (start, end) indexes of data to analyse.
                            2D datasets only, e.g., repeat oscilloscope traces.
-            label='mean' 
+            label='total' 
                            Output column label(s). dtype must be str or iterable.
 
         return:

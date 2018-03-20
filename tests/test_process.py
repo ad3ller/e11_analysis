@@ -5,7 +5,8 @@ Created on Wed Jan 31 13:07:04 2018
 @author: Adam
 """
 import os
-from e11 import H5Data, statistics
+from e11 import H5Data
+from e11.stats import statistics
 from e11.process import vrange
 
 DIRE = os.path.join(os.getcwd(), 'notebooks', 'example_data')
