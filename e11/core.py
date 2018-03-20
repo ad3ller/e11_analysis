@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 import IPython
 from tqdm import tqdm
-from .tools import get_tqdm_kwargs, utf8_attrs, add_index
+from .tools import sub_dire, get_tqdm_kwargs, utf8_attrs, add_index
 
 # constants
 MEASUREMENT_ID = 'measurement'
@@ -36,8 +36,8 @@ def run_file(base, rid, ftype="_data.h5", check=True):
     """ Build path to data file using run ID.
 
         base/YYYY/MM/DD/[rid]/[rid][ftype]
-    
-        Usually the run ID will be a complete timestamp or the date appended by a 
+
+        Usually the run ID will be a complete timestamp or the date appended by a
         padded integer, e.g.,
 
             YYYYMMDD_hhmmss, or YYYYMMDD_001.
@@ -46,7 +46,7 @@ def run_file(base, rid, ftype="_data.h5", check=True):
             base
             rid
             ftype='_data.h5'
-            check=True      - exists?
+            check=True          does file exist?
 
         return:
             path to rid h5 file
@@ -129,7 +129,7 @@ def cashew(method):
 class H5Scan(object):
     """ A simple tool for working with simple hdf5 data.
     """
-    def __init__(self, fil, out_dire=None, update=False):
+    def __init__(self, fil, out_dire=None):
         # data file
         self.fil = fil
         self.dire = os.path.dirname(self.fil)
@@ -159,7 +159,7 @@ class H5Scan(object):
         if self.out_dire is None:
             self.cache_dire = None
         else:
-            self.cache_dire = self.sub_dire('cache')
+            self.cache_dire = sub_dire(self.out_dire, 'cache')
         # datafile
         if not os.path.isfile(self.fil):
             # file not found
@@ -270,18 +270,6 @@ class H5Scan(object):
         return df
 
     ## misc. tools
-    def sub_dire(self, dire, fname=None):
-        """ Build path to a sub-directory of h5.out_dire.  Create if does not exist."""
-        if self.out_dire is None:
-            raise Exception('Cannot build h5.sub_dire because h5.out_dire is None.')
-        else:
-            path = os.path.join(self.out_dire, dire)
-            if not os.path.exists(path):
-                os.makedirs(path)
-            if fname is not None:
-                path = os.path.join(path, fname)
-            return path
-
     def pprint(self):
         """ print author and description info """
         output = ("file: \t\t %s \n" + \
@@ -322,7 +310,7 @@ class H5Data(object):
         if self.out_dire is None:
             self.cache_dire = None
         else:
-            self.cache_dire = self.sub_dire('cache')
+            self.cache_dire = sub_dire(self.out_dire, 'cache')
         # datafile
         if not os.path.isfile(self.fil):
             # file not found
@@ -633,18 +621,6 @@ class H5Data(object):
         return result
 
     ## misc. tools
-    def sub_dire(self, dire, fname=None):
-        """ Build path to a sub-directory of h5.out_dire.  Create if does not exist."""
-        if self.out_dire is None:
-            raise Exception('Cannot build h5.sub_dire because h5.out_dire is None.')
-        else:
-            path = os.path.join(self.out_dire, dire)
-            if not os.path.exists(path):
-                os.makedirs(path)
-            if fname is not None:
-                path = os.path.join(path, fname)
-            return path
-
     def pprint(self):
         """ print author and description info """
         author = self.attrs['Author']

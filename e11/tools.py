@@ -10,6 +10,18 @@ from numbers import Number
 from collections import Iterable
 import pandas as pd
 
+def sub_dire(dire, name, file_name=None):
+    """ Build path to a sub-directory of dire.  Create if does not exist."""
+    if dire is None:
+        raise Exception('Cannot build sub_dire because dire is None.')
+    else:
+        path = os.path.join(dire, sub_dire)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        if file_name is not None:
+            path = os.path.join(path, file_name)
+        return path
+
 def ls(dire, regex='*', full_output=True, report=False):
     """ List the contents of dire.
 
