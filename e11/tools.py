@@ -15,7 +15,7 @@ def sub_dire(dire, name, file_name=None):
     if dire is None:
         raise Exception('Cannot build sub_dire because dire is None.')
     else:
-        path = os.path.join(dire, sub_dire)
+        path = os.path.join(dire, name)
         if not os.path.exists(path):
             os.makedirs(path)
         if file_name is not None:
