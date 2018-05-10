@@ -367,6 +367,16 @@ class H5Data(object):
             return log_df
 
     @property
+    def author(self):
+        """ author info """
+        return self.attrs['Author']
+
+    @property
+    def desc(self):
+        """ data description """
+        return self.attrs['Description']
+
+    @property
     def var(self):
         """ DataFrame of just the VAR values from the log file """
         if self._var is None:
