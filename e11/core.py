@@ -342,10 +342,10 @@ class H5Data(object):
         with h5py.File(self.fil, 'r') as dfil:
             # read attributes from each squid
             all_vars = []
-            for gr in tqdm(self.groups, **tqdm_kwargs):
+            for group in tqdm(self.groups, **tqdm_kwargs):
                 # read info
-                attrs = utf8_attrs(dict(dfil[gr].attrs))
-                all_vars.append(pd.DataFrame([attrs], index=[int(gr)]))
+                attrs = utf8_attrs(dict(dfil[group].attrs))
+                all_vars.append(pd.DataFrame([attrs], index=[int(group)]))
             log_df = pd.concat(all_vars)
             log_df.index.name = 'squid'
             log_df.sort_index(inplace=True)
@@ -410,18 +410,18 @@ class H5Data(object):
         """
         # check squid
         if isinstance(squid, str):
-            squid_str = squid
+            group = squid
         elif isinstance(squid, int):
-            squid_str = str(squid)
+            group = str(squid)
         else:
             raise TypeError('squid.dtype must be int or str.')
-        if squid_str not in self.groups:
-            raise LookupError("squid = " + squid_str + " not found.")
+        if group not in self.groups:
+            raise LookupError("squid = " + group + " not found.")
         else:
             # get group attributes
             with h5py.File(self.fil, 'r') as dfil:
                 data = dfil['.']
-                return utf8_attrs(dict(data[squid_str].attrs))
+                return utf8_attrs(dict(data[group].attrs))
 
     def datasets(self, squid=1):
         """ Get group datasets.
@@ -432,13 +432,13 @@ class H5Data(object):
             return:
                 tuple of the names of datasets in h5[squid]
         """
-        squid_str = str(squid)
-        if squid_str not in self.groups:
-            raise LookupError("squid = " + squid_str + " not found.")
+        group = str(squid)
+        if group not in self.groups:
+            raise LookupError("squid = " + group + " not found.")
         else:
             with h5py.File(self.fil, 'r') as dfil:
                 data = dfil['.']
-                return tuple(data[squid_str].keys())
+                return tuple(data[group].keys())
 
     def dataset_attrs(self, dataset, squid=1):
         """ Get dataset attributes.
@@ -449,13 +449,13 @@ class H5Data(object):
             return:
                 h5[squid][dataset].attributes     dict()
         """
-        squid_str = str(squid)
-        if squid_str not in self.groups:
-            raise LookupError("squid = " + squid_str + " not found.")
+        group = str(squid)
+        if group not in self.groups:
+            raise LookupError("squid = " + group + " not found.")
         else:
             with h5py.File(self.fil, 'r') as dfil:
                 data = dfil['.']
-                attributes = utf8_attrs(dict(data[squid_str][dataset].attrs))
+                attributes = utf8_attrs(dict(data[group][dataset].attrs))
                 attributes['squid'] = squid
                 return attributes
 
@@ -493,13 +493,13 @@ class H5Data(object):
         arr = []
         with h5py.File(self.fil, 'r') as dfil:
             for sq in tqdm(squids, **tqdm_kwargs):
-                squid_str = str(sq)
-                if squid_str in dfil and dataset in dfil[squid_str]:
-                    dat = np.array(dfil[squid_str][dataset])
+                group = str(sq)
+                if group in dfil and dataset in dfil[group]:
+                    dat = np.array(dfil[group][dataset])
                     arr.append(dat)
                 elif not ignore_missing:
                     raise Exception("Error: " + dataset + " not found for squid " \
-                                    + squid_str + ".  Use ignore_missing=True if you don't care.")
+                                    + group + ".  Use ignore_missing=True if you don't care.")
         arr = np.concatenate(arr, axis=axis)
         if 'int' in str(arr.dtype):
             # int8 and int16 is a bit restrictive
@@ -551,12 +551,12 @@ class H5Data(object):
         with h5py.File(self.fil, 'r') as dfil:
             # loop over squid values
             for sq in tqdm(squids, **tqdm_kwargs):
-                squid_str = str(sq)
-                if squid_str in dfil and dataset in dfil[squid_str]:
+                group = str(sq)
+                if group in dfil and dataset in dfil[group]:
                     if columns is None:
-                        tmp = pd.DataFrame(np.array(dfil[squid_str][dataset]))
+                        tmp = pd.DataFrame(np.array(dfil[group][dataset]))
                     else:
-                        tmp = pd.DataFrame(np.array(dfil[squid_str][dataset]))[columns]
+                        tmp = pd.DataFrame(np.array(dfil[group][dataset]))[columns]
                     num_rows = len(tmp.index.values)
                     if num_rows > 0:
                         tmp[MEASUREMENT_ID] = tmp.index
@@ -564,7 +564,7 @@ class H5Data(object):
                         arr.append(tmp)
                 elif not ignore_missing:
                     raise Exception("Error: " + dataset + " not found for squid " \
-                                    + squid_str + ".  Use ignore_missing=True if you don't care.")
+                                    + group + ".  Use ignore_missing=True if you don't care.")
         num_df = len(arr)
         if num_df == 0:
             raise Exception('No datasets found')
@@ -615,9 +615,9 @@ class H5Data(object):
         with h5py.File(self.fil, 'r') as dfil:
             # loop over each squid
             for sq in tqdm(squids, unit='sq', **tqdm_kwargs):
-                squid_str = str(sq)
-                if all([ds in dfil[squid_str] for ds in dataset]):
-                    data = [dfil[squid_str][ds] for ds in dataset]
+                group = str(sq)
+                if all([ds in dfil[group] for ds in dataset]):
+                    data = [dfil[group][ds] for ds in dataset]
                     df = func(data, **kwargs)
                     df['squid'] = sq
                     result.append(df)
@@ -636,7 +636,7 @@ class H5Data(object):
         desc = self.attrs['Description'].replace('\n', '\n\t\t ')
         output = ("file: \t\t %s \n" + \
                   "size: \t\t %.2f MB \n" + \
-                  "groups: \t %d \n" + \
+                  "num groups: \t %d \n" + \
                   "author: \t %s \n" + \
                   "description: \t %s")%(self.fil, self.size*1e-6, self.num_groups, author, desc)
         print(output)
