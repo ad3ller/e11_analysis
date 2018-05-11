@@ -279,7 +279,7 @@ class H5Scan(object):
 class H5Data(object):
     """ For working with oskar hdf5 data.
     """
-    def __init__(self, fil, log_file='log.pkl', out_dire=None, update=False):
+    def __init__(self, fil, out_dire=None, update_log=False):
         # data file
         self.fil = fil
         self.dire = os.path.dirname(self.fil)
@@ -287,7 +287,7 @@ class H5Data(object):
         # output folder
         if out_dire is not None:
             if os.path.isabs(out_dire):
-                # absolute path
+                # absolute path 
                 if os.path.isdir(out_dire):
                     self.out_dire = out_dire
                 else:
@@ -308,36 +308,42 @@ class H5Data(object):
         # cache directory
         if self.out_dire is None:
             self.cache_dire = None
+            self.log_file = None
         else:
             self.cache_dire = sub_dire(self.out_dire, 'cache')
+            self.log_file = os.path.join(self.cache_dire, 'log.pkl')
         # datafile
         if not os.path.isfile(self.fil):
             # file not found
             raise IOError(self.fil + " file not found.")
+        # initialise class cache
+        self._log = None
+        self._var = None
+        self._rec = None
         # open datafile and extract info
         with h5py.File(self.fil, 'r') as dfil:
             self.attrs = utf8_attrs(dict(dfil.attrs))
             self.groups = list(dict(dfil.items()).keys())
             self.num_groups = len(self.groups)
             self.squids = np.sort(np.array(self.groups).astype(int))
-        # build log file if missing
-        if self.cache_dire is not None and log_file is not None:
-            self.log_file = os.path.join(self.cache_dire, log_file)
-            if not update and os.path.exists(self.log_file):
-                self.log = pd.read_pickle(self.log_file)
-            else:
-                self.update(inplace=True)
-        else:
-            self.log_file = None
-            self.update(inplace=True)
-        # cache
-        self._var = None
-        self._rec = None
+        # log file
+        if update_log:
+            self.update_log()
+
+    @property
+    def author(self):
+        """ author info """
+        return self.attrs['Author']
+
+    @property
+    def desc(self):
+        """ data description """
+        return self.attrs['Description']
 
     ## log file
-    def update(self, inplace=True, **kwargs):
+    def update_log(self, inplace=True, cache=True, **kwargs):
         """ Read squid attributes and save as cache/log.pkl.
-        """
+        """       
         tqdm_kwargs = get_tqdm_kwargs(kwargs)
         with h5py.File(self.fil, 'r') as dfil:
             # read attributes from each squid
@@ -355,26 +361,57 @@ class H5Data(object):
                 log_df.DATETIME = pd.to_datetime(log_df.DATETIME)
                 log_df['ELAPSED'] = (log_df.DATETIME - log_df.DATETIME.min())
         # save to pickle file
-        if self.log_file is not None:
+        if cache and self.log_file is not None:
             log_df.to_pickle(self.log_file)
         # result
         if inplace:
-            self.log = log_df
+            self._log = log_df
             # reset var and rec
             self._var = None
             self._rec = None
         else:
             return log_df
 
-    @property
-    def author(self):
-        """ author info """
-        return self.attrs['Author']
+    def load_log(self, inplace=True):
+        """ Load cached log file.  Default file is [cache_dire]/log.pkl.
+
+            To load a custom file.
+
+            >>> h5.log_file = [path to file]
+            >>> h5.load_log()
+        """
+        if self.log_file is None:
+            raise Exception("log_file not defined")
+        elif not os.path.exists(self.log_file):
+            raise Exception("log_file not found")
+        else:
+            # read cached file
+            log_df = pd.read_pickle(self.log_file)
+            if inplace:
+                self._log = log_df
+            else:
+                return log_df
 
     @property
-    def desc(self):
-        """ data description """
-        return self.attrs['Description']
+    def log(self):
+        """ DataFrame of the experiment log. 
+            
+            if _log is not None:
+                return _log                               # class cache 
+            elif os.path.exists(log_file):
+                return log_file                           # file cache
+            else:
+                return supdate_log()                      # rebuilt log
+        """
+        if self._log is not None:
+            return self._log
+        else:
+            try:
+                self.load_log(inplace=True)
+            except:
+                self.update_log(inplace=True)
+            finally:
+                return self._log
 
     @property
     def var(self):
