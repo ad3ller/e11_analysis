@@ -29,17 +29,17 @@ def test_squid():
 def test_osc():
     """ load oscilloscope data """
     squids = 1
-    img = h0.array('OSC_0', squids=squids)
+    img = h0.array(squids, 'OSC_0')
     assert (25, 2502) == np.shape(img)
 
 def test_img():
     """ load image data """
     squids = [1, 2]
-    img = h0.array('IMG', squids=squids, axis=2)
+    img = h0.array(squids, 'IMG', axis=2)
     assert (128, 128, 19) == np.shape(img)
     
 def test_df():
     """ load dataframe data """
-    df = h0.df(dataset='AV_0', squids=h0.squids, label=None, ignore_missing=False)
+    df = h0.df(h0.squids, 'AV_0', label=None, ignore_missing=False)
     assert np.array_equal(df.columns, ['AB', 'CD', 'EF'])
     assert 151 == df['AB'].count()

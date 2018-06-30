@@ -166,24 +166,28 @@ class H5Scan(object):
             raise IOError(self.fil + " file not found.")
         # open datafile and extract info
         with h5py.File(self.fil, 'r') as dfil:
-            self.attrs = utf8_attrs(dict(dfil.attrs))
+            self.attributes = utf8_attrs(dict(dfil.attrs))
             self.datasets = list(dict(dfil.items()).keys())
             self.num_datasets = len(self.datasets)
 
-    ## squid info
-    def dataset_attrs(self, dataset):
-        """ Get dataset attributes.
+    ## attributes
+    def attrs(self, dataset=None):
+        """ Get attributes.
 
             args:
-                dataset                    str
+                dataset=None              str
 
             return:
-                h5[dataset].attributes    dict()
+                dict()
+                
+                h5.attributes if dataset is None else h5[dataset].attributes
         """
-        if dataset not in self.datasets:
-            raise LookupError("squid = " + dataset + " not found.")
+        if dataset is None:
+            return self.attributes
+        elif dataset not in self.datasets:
+            raise LookupError("dataset = " + dataset + " not found.")
         else:
-            # get group attributes
+            # get dataset attributes
             with h5py.File(self.fil, 'r') as dfil:
                 data = dfil['.']
                 return utf8_attrs(dict(data[dataset].attrs))
@@ -277,7 +281,7 @@ class H5Scan(object):
         print(output)
 
 class H5Data(object):
-    """ For working with oskar hdf5 data.
+    """ For working with hdf5 that contains groups.
     """
     def __init__(self, fil, out_dire=None, update_log=False):
         # data file
@@ -322,7 +326,7 @@ class H5Data(object):
         self._rec = None
         # open datafile and extract info
         with h5py.File(self.fil, 'r') as dfil:
-            self.attrs = utf8_attrs(dict(dfil.attrs))
+            self.attributes = utf8_attrs(dict(dfil.attrs))
             self.groups = list(dict(dfil.items()).keys())
             self.num_groups = len(self.groups)
             self.squids = np.sort(np.array(self.groups).astype(int))
@@ -333,12 +337,12 @@ class H5Data(object):
     @property
     def author(self):
         """ author info """
-        return self.attrs['Author']
+        return self.attributes['Author']
 
     @property
     def desc(self):
         """ data description """
-        return self.attrs['Description']
+        return self.attributes['Description']
 
     ## log file
     def update_log(self, inplace=True, cache=True, **kwargs):
@@ -436,29 +440,51 @@ class H5Data(object):
         return self._rec
 
     ## squid info
-    def group_attrs(self, squid):
-        """ Get group attributes.
+    def attrs(self, squid=None, dataset=None):
+        """ Get root/group/dataset attributes.
 
             args:
-                squid                    int/ str
-
+                squid=None                  int/ str
+                dataset=None                str
             return:
-                h5[squid].attributes     dict()
+                dict()
+                
+                if squid is None:
+                    h5.attributes
+                elif dataset is None:
+                    h5[squid].attributes     
+                else:
+                    h5[squid][dataset].attributes
         """
+        if squid is None:
+            return self.attributes
         # check squid
-        if isinstance(squid, str):
+        elif isinstance(squid, str):
             group = squid
         elif isinstance(squid, int):
             group = str(squid)
         else:
             raise TypeError('squid.dtype must be int or str.')
+        # check squid
         if group not in self.groups:
             raise LookupError("squid = " + group + " not found.")
-        else:
+        if dataset is None:
             # get group attributes
             with h5py.File(self.fil, 'r') as dfil:
                 data = dfil['.']
                 return utf8_attrs(dict(data[group].attrs))
+        # dataset info
+        elif not isinstance(dataset, str):
+            raise TypeError('dataset must be a str.')
+        else:
+            with h5py.File(self.fil, 'r') as dfil:
+                data = dfil['.']
+                if dataset in data[group]:
+                    attributes = utf8_attrs(dict(data[group][dataset].attrs))
+                    attributes['squid'] = squid
+                    return attributes
+                else:
+                    raise LookupError("dataset = " + dataset + " not found for squid = ." + group)
 
     def datasets(self, squid=1):
         """ Get group datasets.
@@ -467,7 +493,9 @@ class H5Data(object):
                 squid=1
 
             return:
-                tuple of the names of datasets in h5[squid]
+                list
+                
+                names of datasets in h5[squid]
         """
         group = str(squid)
         if group not in self.groups:
@@ -475,35 +503,16 @@ class H5Data(object):
         else:
             with h5py.File(self.fil, 'r') as dfil:
                 data = dfil['.']
-                return tuple(data[group].keys())
-
-    def dataset_attrs(self, dataset, squid=1):
-        """ Get dataset attributes.
-
-            args:
-                squid=1                            (int)
-
-            return:
-                h5[squid][dataset].attributes     dict()
-        """
-        group = str(squid)
-        if group not in self.groups:
-            raise LookupError("squid = " + group + " not found.")
-        else:
-            with h5py.File(self.fil, 'r') as dfil:
-                data = dfil['.']
-                attributes = utf8_attrs(dict(data[group][dataset].attrs))
-                attributes['squid'] = squid
-                return attributes
+                return list(data[group].keys())
 
     ## array data (e.g., traces and images)
     @cashew
-    def array(self, dataset, squids, axis=0, **kwargs):
+    def array(self, squids, dataset, axis=0, **kwargs):
         """ Load HDF5 array h5[squids][dataset] and its attributes.
 
             args:
-                dataset     Name of dataset      (str)
                 squids      Group(s)             (int / list/ array)
+                dataset     Name of dataset      (str)
                 axis=0      Concatenation axis   (int)
 
             kwargs:
@@ -545,7 +554,7 @@ class H5Data(object):
 
     ## DataFrame data (e.g., stats)
     @cashew
-    def df(self, dataset, squids, columns=None, **kwargs):
+    def df(self, squids, dataset, columns=None, **kwargs):
         """ load HDF5 DataFrame data[squids][dataset][columns] and its attributes.
 
             squids can be a single value or a list of values.
@@ -553,8 +562,8 @@ class H5Data(object):
             If columns=None then return all columns in the dataset.
 
             args:
-                dataset        name of dataset             (str)
                 squids         group(s)                    (int / list/ array)
+                dataset        name of dataset             (str)
                 columns=None   names of columns            (list)
 
             kwargs:
@@ -620,13 +629,13 @@ class H5Data(object):
         return df
 
     @cashew
-    def apply(self, func, dataset, squids, **kwargs):
+    def apply(self, func, squids, dataset, **kwargs):
         """ Apply func to h5.[squids][dataset(s)].
 
             args:
                 func           function to apply to data   (obj)
-                dataset        name of dataset             (str)
                 squids         group(s)                    (int / list/ array)
+                dataset        name of dataset             (str)
 
             kwargs:
                 cache=None     If cache is not None, save result to h5.cache_dire/[cache].apply.pkl,
@@ -669,11 +678,10 @@ class H5Data(object):
     ## misc. tools
     def pprint(self):
         """ print author and description info """
-        author = self.attrs['Author']
-        desc = self.attrs['Description'].replace('\n', '\n\t\t ')
+        desc = self.desc.replace('\n', '\n\t\t ')
         output = ("file: \t\t %s \n" + \
                   "size: \t\t %.2f MB \n" + \
                   "num groups: \t %d \n" + \
                   "author: \t %s \n" + \
-                  "description: \t %s")%(self.fil, self.size*1e-6, self.num_groups, author, desc)
+                  "description: \t %s")%(self.fil, self.size*1e-6, self.num_groups, self.author, desc)
         print(output)
