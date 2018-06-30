@@ -20,7 +20,7 @@ And run tests,
 
    pytest
 
-The package can now be imported into python as `e11`.  
+The package can now be imported into python as *e11*.  
 
 
 Basic Usage
