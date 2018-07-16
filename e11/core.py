@@ -283,7 +283,7 @@ class H5Scan(object):
 class H5Data(object):
     """ For working with hdf5 that contains groups.
     """
-    def __init__(self, fil, out_dire=None, update_log=False):
+    def __init__(self, fil, out_dire=None, update_log=False, force=False):
         # data file
         self.fil = fil
         self.dire = os.path.dirname(self.fil)
@@ -300,13 +300,16 @@ class H5Data(object):
                 # relative path
                 self.out_dire = os.path.join(self.dire, out_dire)
                 if not os.path.exists(self.out_dire):
-                    response = input(self.out_dire + ' does not exist.  Create? [Y/n]: ')
-                    create = response.upper() in ['Y', 'YES']
-                    if create:
+                    if force:
                         os.makedirs(self.out_dire)
                     else:
-                        self.out_dire = None
-                    IPython.core.display.clear_output()
+                        response = input(self.out_dire + ' does not exist.  Create? [Y/n]: ')
+                        create = response.upper() in ['Y', 'YES']
+                        if create:
+                            os.makedirs(self.out_dire)
+                        else:
+                            self.out_dire = None
+                        IPython.core.display.clear_output()
         else:
             self.out_dire = out_dire
         # cache directory
