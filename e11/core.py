@@ -129,7 +129,7 @@ def cashew(method):
 class H5Scan(object):
     """ A simple tool for working with simple hdf5 data.
     """
-    def __init__(self, fil, out_dire=None):
+    def __init__(self, fil, out_dire=None, force=False):
         # data file
         self.fil = fil
         self.dire = os.path.dirname(self.fil)
@@ -146,13 +146,17 @@ class H5Scan(object):
                 # relative path
                 self.out_dire = os.path.join(self.dire, out_dire)
                 if not os.path.exists(self.out_dire):
-                    response = input(self.out_dire + ' does not exist.  Create? [Y/n]: ')
-                    create = response.upper() in ['Y', 'YES']
-                    if create:
+                    if force:
+                        # don't ask, use the force
                         os.makedirs(self.out_dire)
                     else:
-                        self.out_dire = None
-                    IPython.core.display.clear_output()
+                        response = input(self.out_dire + ' does not exist.  Create? [Y/n]: ')
+                        create = response.upper() in ['Y', 'YES']
+                        if create:
+                            os.makedirs(self.out_dire)
+                        else:
+                            self.out_dire = None
+                        IPython.core.display.clear_output()
         else:
             self.out_dire = out_dire
         # cache directory
