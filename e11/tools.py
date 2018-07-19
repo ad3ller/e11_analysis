@@ -8,6 +8,7 @@ import os
 import glob
 from numbers import Number
 from collections import Iterable
+import numpy as np
 import pandas as pd
 
 def sub_dire(dire, name, file_name=None):
