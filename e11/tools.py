@@ -153,6 +153,26 @@ def rescale(arr, yscale, yoffset):
     """
     return arr * yscale + yoffset
 
+def nth_dflip(arr, n=0):
+    """ Index of the nth occurance of a flip in the gradient of arr.
+    
+        e.g., use to find loops in variables for linear scans 
+    
+        args:
+            arr          np.array(dims=1)
+            n=0          int
+          
+        return:
+            int
+    """
+    sign = np.sign(np.diff(arr))
+    idx = np.nonzero(sign)[0][0]
+    d0 = sign[idx]
+    try:
+        return np.argwhere(sign == -d0)[0][n]
+    except:
+        return -1
+
 def clabel(df, label):
     """ Relable columns of a DataFrame.
 
