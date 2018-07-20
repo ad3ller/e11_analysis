@@ -72,50 +72,20 @@ def utf8_attrs(info):
             info[key] = val.decode('utf8')
     return info
 
-def add_index(df, name, values=None, **kwargs):
-    """ Add an index to pd.DataFrame(), e.g., for combing run data
-
-        >>> a = add_index(a, 'rid', "20180109_181053", prepend=True)
-        >>> b = add_index(b, 'rid', "20180109_191151", prepend=True)
-        >>> c = pd.concat([a, b])
-
-        args:
-            df             pd.DataFrame()
-            name           column to make index
-            values=None    Index value(s).
-                           Needed if column does not exist in df.
-
-        kwargs:
-            prepend=False  If True, place new index first.
-
-        return:
-            df             pd.DataFrame()
-
-    """
-    prepend = kwargs.get('prepend', False)
-    if values is not None:
-        df[name] = values
-    df = df.set_index(name, append=True)
-    if prepend:
-        # move name to the front of the index
-        index_names = df.index.names.copy()
-        index_names.insert(0, index_names.pop(-1))
-        df = df.reorder_levels(index_names)
-    return df
-
-def add_column_index(df, label='', position='first'):
-    """ Add a level to pd.MultiIndex columns.
+def add_level(df, label='', position='first'):
+    """ 
+        Add a level to pd.MultiIndex columns.
 
         This can be useful when joining DataFrames with / without multiindex columns.
 
-        >>> st = statistics(a_df)      # MultiIndex DataFrame
-        >>> add_column_index(h5.var, label='VAR').join(st)
+        >>> st = statistics(a_df)                # MultiIndex DataFrame
+        >>> add_level(h5.var, 'VAR').join(st)
 
         args:
             df          object to add index level to    pd.DataFrame()
             label=''    value(s) of the added level(s)  str() / list(str)
             position=0
-                        position of level to add        'first'/ 'last' or int
+                        position of level to add        'first', 'last' or int
 
         return:
             df.copy() with pd.MultiIndex()
@@ -175,11 +145,11 @@ def nth_dflip(arr, n=0):
         return -1
 
 def clabel(df, label):
-    """ Relable columns of a DataFrame.
+    """ Relabel columns of a DataFrame.
 
         args:
             df             pd.DataFrame
-            labels=None    Column labels.  Defaults to func.__name__.
+            labels=None    Column labels.
                            dtype must be str or iterable.
     """
     cols = df.columns
