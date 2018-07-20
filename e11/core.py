@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 import IPython
 from tqdm import tqdm
-from .tools import sub_dire, get_tqdm_kwargs, utf8_attrs, add_index
+from .tools import sub_dire, get_tqdm_kwargs, utf8_attrs
 
 # constants
 MEASUREMENT_ID = 'measurement'
@@ -547,7 +547,7 @@ class H5Data(object):
         with h5py.File(self.fil, 'r') as dfil:
             for sq in tqdm(squids, **tqdm_kwargs):
                 group = str(sq)
-                if group in dfil and dataset in dfil[group]:
+                if (group in dfil) and (dataset in dfil[group]):
                     dat = np.array(dfil[group][dataset])
                     arr.append(dat)
                 elif not ignore_missing:
@@ -599,41 +599,37 @@ class H5Data(object):
         # initialise
         if isinstance(squids, int):
             squids = [squids]
-        arr = []
+        result = []
         # open file
         with h5py.File(self.fil, 'r') as dfil:
             # loop over squid values
             for sq in tqdm(squids, **tqdm_kwargs):
                 group = str(sq)
-                if group in dfil and dataset in dfil[group]:
-                    if columns is None:
-                        tmp = pd.DataFrame(np.array(dfil[group][dataset]))
-                    else:
-                        tmp = pd.DataFrame(np.array(dfil[group][dataset]))[columns]
-                    num_rows = len(tmp.index.values)
-                    if num_rows > 0:
-                        tmp[MEASUREMENT_ID] = tmp.index
-                        tmp['squid'] = sq
-                        arr.append(tmp)
+                _df = None
+                if (group in dfil) and (dataset in dfil[group]):
+                    _df = pd.DataFrame(np.array(dfil[group][dataset]))
+                    _df.index.name = MEASUREMENT_ID
+                    if columns is not None:
+                        _df = _df[columns]
                 elif not ignore_missing:
                     raise Exception("Error: " + dataset + " not found for squid " \
                                     + group + ".  Use ignore_missing=True if you don't care.")
-        num_df = len(arr)
-        if num_df == 0:
+                result.append(_df)
+        num = sum(1 for _ in filter(None.__ne__, result))
+        if num == 0:
             raise Exception('No datasets found')
-        df = pd.concat(arr, ignore_index=True)
-        df = df.set_index(['squid', MEASUREMENT_ID])
+        result = pd.concat(result, keys=squids, names=['squid'])
         # convert column names to str
         if columns_astype_str:
-            df.columns = np.array(df.columns.values).astype(str)
+            result.columns = np.array(result.columns.values).astype(str)
         # extend multiindex using label
         if label:
-            if not isinstance(label, str):
+            if isinstance(label, bool):
                 label = dataset
-            lbl_0 = np.full_like(df.columns, label)
-            df.columns = pd.MultiIndex.from_arrays([lbl_0, df.columns])
+            lbl_0 = np.full_like(result.columns, label)
+            result.columns = pd.MultiIndex.from_arrays([lbl_0, result.columns])
         # output
-        return df
+        return result
 
     @cashew
     def apply(self, func, squids, dataset, **kwargs):
@@ -669,16 +665,15 @@ class H5Data(object):
             # loop over each squid
             for sq in tqdm(squids, unit='sq', **tqdm_kwargs):
                 group = str(sq)
+                _df = None
                 if all([ds in dfil[group] for ds in dataset]):
                     data = [dfil[group][ds] for ds in dataset]
-                    df = func(data, **kwargs)
-                    df['squid'] = sq
-                    result.append(df)
-        num_sq = len(result)
-        if num_sq == 0:
-            raise Exception('No data found for '+ dataset + '.')
-        result = pd.concat(result)
-        result = add_index(result, 'squid', prepend=True)
+                    _df = func(data, **kwargs)
+                result.append(_df)
+        num = sum(1 for _ in filter(None.__ne__, result))
+        if num == 0:
+            raise Exception('No data found for ' + dataset + '.')
+        result = pd.concat(result, keys=squids, names=['squid'])
         # output
         return result
 
