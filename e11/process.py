@@ -94,3 +94,45 @@ def mean(*data, axis=1, subset=None, name='mean', keys=None, **kwargs):
     func = lambda arr : pd.Series(np.mean(arr, axis=axis), name=name)
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
+
+def median(*data, axis=1, subset=None, name='mean', keys=None, **kwargs):
+    """ Calculate the median value for an array dataset.
+
+        args:
+            data           [np.array]
+
+        kwargs:
+            axis=1         apply along axis=axis.
+            subset=None    slice the array data
+            name="mean"    column name
+            keys=None      list of names for each dataset
+
+        return:
+            pd.DataFrame()
+    """
+    func = lambda arr : pd.Series(np.median(arr, axis=axis), name=name)
+    df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
+    return df
+
+def stats(*data, axis=1, subset=None, columns=['mean', 'std'], keys=None, **kwargs):
+    """ Calculate the mean and standard deviation for an array dataset.
+
+        args:
+            data           [np.array]
+
+        kwargs:
+            axis=1         apply along axis=axis.
+            subset=None    slice the array data
+            columns=['mean', 'std']
+                           column names
+            keys=None      list of names for each dataset
+
+        return:
+            pd.DataFrame()
+
+        notes:
+            numpy.std() does not include the Bessel correction
+    """
+    func = lambda arr : pd.DataFrame(np.array([np.mean(arr, axis=axis), np.std(arr, axis=axis)]).T, columns=columns)
+    df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
+    return df
