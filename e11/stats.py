@@ -22,16 +22,17 @@ def statistics(df, groupby='squid', **kwargs):
             groupby='squid'    str/ list/ np.array()
 
         kwargs:
-            mode='basic'
-                           'count'  = count
-                           'abbr'   = mean, err
-                           'basic'  = + std, count
-                           'full'   = + min, max, median and range
+            mode='default'
+                           'count'    = count
+                           'abbr'     = mean, err
+                           'default'  = count, mean, std, err
+                           'full'     = count, mean, std, err,
+                                        max, min, range, median
 
         return:
             pd.DataFrame()
     """
-    mode = kwargs.get('mode', 'basic')
+    mode = kwargs.get('mode', 'default')
     #check Series or DataFrame
     if isinstance(df, pd.Series):
         df_columns = [df.name]
@@ -55,7 +56,7 @@ def statistics(df, groupby='squid', **kwargs):
     elif mode == 'abbr':
         red = [gr.mean(), gr.std() * gr.count()**-0.5]
         stat_columns = ['mean', 'err']
-    elif mode == 'basic':
+    elif mode == 'default':
         red = [gr.count(), gr.mean(), gr.std(), gr.std() * gr.count()**-0.5]
         stat_columns = ['count', 'mean', 'std', 'err']
     elif mode == 'full':
