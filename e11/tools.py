@@ -43,13 +43,17 @@ def ls(dire, regex='*', full_output=True, report=False):
     fnames = [os.path.split(f)[1] for f in fils]
     return fnames
 
-def t_index(time, dt, t0=0.0):
+def t_index(time, dt=1.0, t0=0.0):
     """ convert time to index using dt [and t0].
     """
     if isinstance(time, Number):
         return int(round((time - t0) / dt))
-    elif isinstance(time, Iterable):
-        return tuple(int(round((t - t0) / dt)) for t in time)
+    elif isinstance(time, tuple):
+        return tuple([int(round((t - t0) / dt)) for t in time])
+    elif isinstance(time, list):
+        return list([int(round((t - t0) / dt)) for t in time])
+    elif isinstance(time, np.ndarray):
+        return np.array([int(round((t - t0) / dt)) for t in time])
     else:
         raise TypeError("time must be a number or list of numbers.")
 
