@@ -68,4 +68,4 @@ target/
 notebooks/F2/
 
 .pytest_cache/v/cache/nodeids
-.vscode/settings.json
+.vscode/
