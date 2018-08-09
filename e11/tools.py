@@ -143,27 +143,3 @@ def nth_dflip(arr, n=0):
         return np.argwhere(sign == -d0)[0][n]
     except:
         return -1
-
-def clabel(df, label):
-    """ Relabel columns of a DataFrame.
-
-        args:
-            df             pd.DataFrame
-            labels=None    Column labels.
-                           dtype must be str or iterable.
-    """
-    cols = df.columns
-    if isinstance(label, str):
-        if len(cols) > 1:
-            new_cols = [label + "_" + str(c) for c in cols]
-        else:
-            new_cols = [label]
-    elif isinstance(label, Iterable):
-        if len(label) == len(df.columns):
-            new_cols = label
-        else:
-            raise TypeError('length of label must match number of columns')
-    else:
-        raise TypeError('label must be str or iterable')
-    df.columns = new_cols
-    return df

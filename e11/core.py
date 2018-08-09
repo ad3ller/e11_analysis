@@ -599,26 +599,25 @@ class H5Data(object):
         # initialise
         if isinstance(squids, int):
             squids = [squids]
-        result = []
+        result = dict()
         # open file
         with h5py.File(self.fil, 'r') as dfil:
             # loop over squid values
             for sq in tqdm(squids, **tqdm_kwargs):
                 group = str(sq)
-                _df = None
                 if (group in dfil) and (dataset in dfil[group]):
                     _df = pd.DataFrame(np.array(dfil[group][dataset]))
                     _df.index.name = MEASUREMENT_ID
                     if columns is not None:
                         _df = _df[columns]
+                    result[sq] = _df
                 elif not ignore_missing:
                     raise Exception("Error: " + dataset + " not found for squid " \
                                     + group + ".  Use ignore_missing=True if you don't care.")
-                result.append(_df)
-        num = sum(1 for _ in filter(None.__ne__, result))
+        num = len(result)
         if num == 0:
             raise Exception('No datasets found')
-        result = pd.concat(result, keys=squids, names=['squid'])
+        result = pd.concat(result, names=['squid'])
         # convert column names to str
         if columns_astype_str:
             result.columns = np.array(result.columns.values).astype(str)
@@ -659,21 +658,19 @@ class H5Data(object):
         if not isinstance(dataset, list):
             dataset = [dataset]
         # initialise output
-        result = []
+        result = dict()
         # open file
         with h5py.File(self.fil, 'r') as dfil:
             # loop over each squid
             for sq in tqdm(squids, unit='sq', **tqdm_kwargs):
                 group = str(sq)
-                _df = None
                 if all([ds in dfil[group] for ds in dataset]):
                     data = [dfil[group][ds] for ds in dataset]
-                    _df = func(data, **kwargs)
-                result.append(_df)
-        num = sum(1 for _ in filter(None.__ne__, result))
+                    result[sq] = func(*data, **kwargs)
+        num = len(result)
         if num == 0:
             raise Exception('No data found for ' + dataset + '.')
-        result = pd.concat(result, keys=squids, names=['squid'])
+        result = pd.concat(result, names=['squid'])
         # output
         return result
 
