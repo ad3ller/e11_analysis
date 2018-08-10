@@ -38,7 +38,7 @@ def process_array(*data, func, subset, keys=None, convert_int=True, **kwargs):
     df.index.rename(MEASUREMENT_ID, inplace=True)
     return df
 
-def vrange(data, axis=1, subset=None, name='vrange', keys=None, **kwargs):
+def vrange(*data, axis=1, subset=None, name='vrange', keys=None, **kwargs):
     """ Calculate the vertical range for an array dataset.
 
         args:
@@ -54,10 +54,10 @@ def vrange(data, axis=1, subset=None, name='vrange', keys=None, **kwargs):
             pd.DataFrame()
     """
     func = lambda arr : pd.Series(np.max(arr, axis=axis) - np.min(arr, axis=axis), name=name)
-    df = process_array(data, func=func, subset=subset, keys=keys, **kwargs)
+    df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
 
-def total(data, axis=1, subset=None, name='total', keys=None, **kwargs):
+def total(*data, axis=1, subset=None, name='total', keys=None, **kwargs):
     """ Calculate the total value for an array dataset.
 
         args:
@@ -73,10 +73,10 @@ def total(data, axis=1, subset=None, name='total', keys=None, **kwargs):
             pd.DataFrame()
     """
     func = lambda arr : pd.Series(np.sum(arr, axis=axis), name=name)
-    df = process_array(data, func=func, subset=subset, keys=keys, **kwargs)
+    df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
 
-def mean(data, axis=1, subset=None, name='mean', keys=None, **kwargs):
+def mean(*data, axis=1, subset=None, name='mean', keys=None, **kwargs):
     """ Calculate the mean value for an array dataset.
 
         args:
@@ -92,10 +92,10 @@ def mean(data, axis=1, subset=None, name='mean', keys=None, **kwargs):
             pd.DataFrame()
     """
     func = lambda arr : pd.Series(np.mean(arr, axis=axis), name=name)
-    df = process_array(data, func=func, subset=subset, keys=keys, **kwargs)
+    df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
 
-def median(data, axis=1, subset=None, name='mean', keys=None, **kwargs):
+def median(*data, axis=1, subset=None, name='mean', keys=None, **kwargs):
     """ Calculate the median value for an array dataset.
 
         args:
@@ -111,10 +111,10 @@ def median(data, axis=1, subset=None, name='mean', keys=None, **kwargs):
             pd.DataFrame()
     """
     func = lambda arr : pd.Series(np.median(arr, axis=axis), name=name)
-    df = process_array(data, func=func, subset=subset, keys=keys, **kwargs)
+    df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
 
-def stats(data, axis=1, subset=None, columns=['mean', 'std'], keys=None, **kwargs):
+def mean_std(*data, axis=1, subset=None, columns=['mean', 'std'], keys=None, **kwargs):
     """ Calculate the mean and standard deviation for an array dataset.
 
         args:
@@ -134,5 +134,5 @@ def stats(data, axis=1, subset=None, columns=['mean', 'std'], keys=None, **kwarg
             numpy.std() does not include the Bessel correction
     """
     func = lambda arr : pd.DataFrame(np.array([np.mean(arr, axis=axis), np.std(arr, axis=axis)]).T, columns=columns)
-    df = process_array(data, func=func, subset=subset, keys=keys, **kwargs)
+    df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
