@@ -47,6 +47,7 @@ def statistics(df, groupby='squid', **kwargs):
         groupby = groupby[0]
         df_columns = [c for c in df_columns if c != groupby]
     else:
+        groupby = list(groupby)
         df_columns = [c for c in df_columns if c not in groupby]
     gr = df.groupby(groupby)
     # output
