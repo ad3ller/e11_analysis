@@ -17,6 +17,7 @@ Created on Tue Nov 28 15:27:09 2017
         - class for accessing hdf5 files with groups
 
 """
+import sys
 import os
 import inspect
 import re
@@ -468,7 +469,7 @@ class H5Data(object):
         # check squid
         elif isinstance(squid, str):
             group = squid
-        elif isinstance(squid, int):
+        elif isinstance(squid, int) or isinstance(squid, np.integer):
             group = str(squid)
         else:
             raise TypeError('squid.dtype must be int or str.')
@@ -657,6 +658,8 @@ class H5Data(object):
             squids = [squids]
         if not isinstance(dataset, list):
             dataset = [dataset]
+        if 'keys' in kwargs and isinstance(kwargs['keys'], bool) and kwargs['keys']:
+            kwargs['keys'] = dataset
         # initialise output
         result = dict()
         # open file
