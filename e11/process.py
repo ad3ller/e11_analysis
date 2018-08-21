@@ -11,6 +11,7 @@ from collections import Iterable
 import numpy as np
 import pandas as pd
 from .core import MEASUREMENT_ID
+from .trigs import threshold_trigger
 
 def process_array(*data, func, subset, keys=None, convert_int=True, **kwargs):
     """ Process array dataset using func.
@@ -135,4 +136,30 @@ def mean_std(*data, axis=1, subset=None, columns=['mean', 'std'], keys=None, **k
     """
     func = lambda arr : pd.DataFrame(np.array([np.mean(arr, axis=axis), np.std(arr, axis=axis)]).T, columns=columns)
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
+    return df
+
+def triggers(arr, dt, min_level, min_width, subset=None, **kwargs):
+    """ Search for trigger events in array data using a threshold condition.
+
+        Nb. trigger only accepts 1 dataset at a time.
+
+        args:
+            arr             np.array() [2D]
+            dt              float64
+            min_level       float64
+            min_width       float64
+        
+        kwargs:
+            subset=None     slice the array data
+            bksub=50        number of points to use for background subtraction
+            invert=True     invert data (events are negative)
+            transpose=False search along rows (transpose=False) or columns (transpose=True)
+            name="event"    index name
+        
+        return:
+            pd.DataFrame(['time', 'width', 'amplitude'])
+    """
+    if subset is not None:
+        arr = arr[subset]
+    df = threshold_trigger(arr, dt, min_level, min_width, **kwargs)
     return df
