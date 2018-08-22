@@ -1,7 +1,7 @@
 e11_analysis
 ============
 
-Python tools for analysis of experimental data stored in hdf5 files.
+Python 3 tools for analysis of experimental data stored in hdf5 files.
 
 Install
 -------

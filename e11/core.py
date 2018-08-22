@@ -649,7 +649,7 @@ class H5Data(object):
 
                 tqdm_kwargs
 
-            result:
+            return:
                 func(datasets, **kwargs), [info]
         """
         tqdm_kwargs = get_tqdm_kwargs(kwargs)
