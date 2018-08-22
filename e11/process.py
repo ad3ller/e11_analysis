@@ -96,7 +96,7 @@ def mean(*data, axis=1, subset=None, name='mean', keys=None, **kwargs):
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
 
-def median(*data, axis=1, subset=None, name='mean', keys=None, **kwargs):
+def median(*data, axis=1, subset=None, name='median', keys=None, **kwargs):
     """ Calculate the median value for an array dataset.
 
         args:
@@ -105,7 +105,7 @@ def median(*data, axis=1, subset=None, name='mean', keys=None, **kwargs):
         kwargs:
             axis=1         apply along axis=axis.
             subset=None    slice the array data
-            name="mean"    column name
+            name="median"  column name
             keys=None      list of names for each dataset
 
         return:
