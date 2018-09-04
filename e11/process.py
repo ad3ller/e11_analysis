@@ -36,7 +36,7 @@ def process_array(*data, func, subset, keys=None, convert_int=True, **kwargs):
             arr = arr[subset]
         result.append(func(arr))
     df = pd.concat(result, axis=1, keys=keys)
-    df.index.rename(MEASUREMENT_ID, inplace=True)
+    df.index.name = MEASUREMENT_ID
     return df
 
 def vrange(*data, axis=1, subset=None, name='vrange', keys=None, **kwargs):

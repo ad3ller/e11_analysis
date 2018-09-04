@@ -264,7 +264,7 @@ class H5Scan(object):
                     df = pd.DataFrame(np.array(dfil[dataset]))[columns]
             else:
                 raise Exception("Error: " + dataset + " not found.")
-        df.index.rename(MEASUREMENT_ID, inplace=True)
+        df.index.name = MEASUREMENT_ID
         # convert column names to str
         if columns_astype_str:
             df.columns = np.array(df.columns.values).astype(str)
@@ -364,11 +364,10 @@ class H5Data(object):
                 # read info
                 attrs = utf8_attrs(dict(dfil[group].attrs))
                 all_vars.append(pd.DataFrame([attrs], index=[int(group)]))
-            log_df = pd.concat(all_vars)
+            log_df = pd.concat(all_vars).sort_index()
             log_df.index.name = 'squid'
-            log_df.sort_index(inplace=True)
             # remove duplicate squid column
-            log_df.drop('SQUID', axis=1, inplace=True)
+            log_df = log_df.drop('SQUID', axis=1)
             if 'DATETIME' in log_df:
                 log_df.DATETIME = pd.to_datetime(log_df.DATETIME)
                 log_df['ELAPSED'] = (log_df.DATETIME - log_df.DATETIME.min())
