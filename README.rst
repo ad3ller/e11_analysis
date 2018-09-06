@@ -23,8 +23,8 @@ And run tests,
 The package can now be imported into python as *e11*.  
 
 
-Usage
------
+Quick Start
+-----------
 
 .. code:: ipython3
 
