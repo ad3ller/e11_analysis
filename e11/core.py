@@ -368,6 +368,8 @@ class H5Data(object):
             if 'SQUID' in result:
                 # remove duplicate squid column
                 result = result.drop('SQUID', axis=1)
+            if 'ACQUIRE' not in result and 'START' in result and 'END' in result:
+                result['ACQUIRE'] = result['END'] - result['START']
             if 'DATETIME' in result:
                 result.DATETIME = pd.to_datetime(result.DATETIME)
                 result['ELAPSED'] = (result.DATETIME - result.DATETIME.min())
