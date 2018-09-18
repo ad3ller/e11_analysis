@@ -359,29 +359,29 @@ class H5Data(object):
         tqdm_kwargs = get_tqdm_kwargs(kwargs)
         with h5py.File(self.fil, 'r') as dfil:
             # read attributes from each squid
-            all_vars = []
+            result = dict()
             for group in tqdm(self.groups, **tqdm_kwargs):
                 # read info
-                attrs = utf8_attrs(dict(dfil[group].attrs))
-                all_vars.append(pd.DataFrame([attrs], index=[int(group)]))
-            log_df = pd.concat(all_vars).sort_index()
-            log_df.index.name = 'squid'
-            # remove duplicate squid column
-            log_df = log_df.drop('SQUID', axis=1)
-            if 'DATETIME' in log_df:
-                log_df.DATETIME = pd.to_datetime(log_df.DATETIME)
-                log_df['ELAPSED'] = (log_df.DATETIME - log_df.DATETIME.min())
+                result[int(group)] = utf8_attrs(dict(dfil[group].attrs))
+            result = pd.DataFrame.from_dict(result, orient='index').sort_index(axis=0).sort_index(axis=1)
+            result.index.name = 'squid'
+            if 'SQUID' in result:
+                # remove duplicate squid column
+                result = result.drop('SQUID', axis=1)
+            if 'DATETIME' in result:
+                result.DATETIME = pd.to_datetime(result.DATETIME)
+                result['ELAPSED'] = (result.DATETIME - result.DATETIME.min())
         # save to pickle file
         if cache and self.log_file is not None:
-            log_df.to_pickle(self.log_file)
+            result.to_pickle(self.log_file)
         # result
         if inplace:
-            self._log = log_df
+            self._log = result
             # reset var and rec
             self._var = None
             self._rec = None
         else:
-            return log_df
+            return result
 
     def load_log(self, inplace=True):
         """ Load cached log file.  Default file is [cache_dire]/log.pkl.
@@ -606,11 +606,11 @@ class H5Data(object):
             for sq in tqdm(squids, **tqdm_kwargs):
                 group = str(sq)
                 if (group in dfil) and (dataset in dfil[group]):
-                    _df = pd.DataFrame(np.array(dfil[group][dataset]))
-                    _df.index.name = MEASUREMENT_ID
+                    tmp = pd.DataFrame(np.array(dfil[group][dataset]))
+                    tmp.index.name = MEASUREMENT_ID
                     if columns is not None:
-                        _df = _df[columns]
-                    result[sq] = _df
+                        tmp = tmp[columns]
+                    result[sq] = tmp
                 elif not ignore_missing:
                     raise Exception("Error: " + dataset + " not found for squid " \
                                     + group + ".  Use ignore_missing=True if you don't care.")
