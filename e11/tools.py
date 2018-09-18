@@ -144,6 +144,6 @@ def nth_dflip(arr, n=0):
     idx = np.nonzero(sign)[0][0]
     d0 = sign[idx]
     try:
-        return np.argwhere(sign == -d0)[0][n]
+        return np.argwhere(sign == -d0)[n]
     except:
         return -1
