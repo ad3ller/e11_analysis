@@ -128,7 +128,12 @@ def cashew(method):
     return wrapper
 
 class H5Scan(object):
-    """ A simple tool for working with simple hdf5 data.
+    """ For hdf5 files that contain only datasets (no groups), e.g.
+
+        root/
+        ├── scope_0
+        ├── scope_1
+        └── analysis
     """
     def __init__(self, fil, out_dire=None, force=False):
         # data file
@@ -286,7 +291,19 @@ class H5Scan(object):
         print(output)
 
 class H5Data(object):
-    """ For working with hdf5 that contains groups.
+    """ For hdf5 files that contain datasets inside a single level of numbered groups, e.g.
+
+        root/
+        ├── 0/
+        │   ├── image
+        │   ├── scope_0
+        │   ├── scope_1
+        |   └── analysis
+        ├── 1/
+        │   ├── image
+        │   ├── scope_0
+        |         ⋮
+        └──
     """
     def __init__(self, fil, out_dire=None, update_log=False, force=False):
         # data file
@@ -328,10 +345,8 @@ class H5Data(object):
         if not os.path.isfile(self.fil):
             # file not found
             raise IOError(self.fil + " file not found.")
-        # initialise class cache
+        # initialise log cache
         self._log = None
-        self._var = None
-        self._rec = None
         # open datafile and extract info
         with h5py.File(self.fil, 'r') as dfil:
             self.attributes = utf8_attrs(dict(dfil.attrs))
@@ -379,9 +394,6 @@ class H5Data(object):
         # result
         if inplace:
             self._log = result
-            # reset var and rec
-            self._var = None
-            self._rec = None
         else:
             return result
 
@@ -414,7 +426,7 @@ class H5Data(object):
             elif os.path.exists(log_file):
                 return log_file                           # file cache
             else:
-                return supdate_log()                      # rebuilt log
+                return update_log()                       # rebuilt log
         """
         if self._log is not None:
             return self._log
@@ -428,25 +440,21 @@ class H5Data(object):
 
     @property
     def var(self):
-        """ DataFrame of just the VAR values from the log file """
-        if self._var is None:
-            df = self.log.filter(regex="VAR:")
-            num_cols = len(df.columns)
-            if num_cols > 0:
-                df.columns = [re.split('^VAR:', col)[1] for col in df.columns.values]
-            self._var = df
-        return self._var
+        """ DataFrame of just the VAR:* values from the log file """
+        tmp = self.log.filter(regex="VAR:")
+        num_cols = len(tmp.columns)
+        if num_cols > 0:
+            tmp.columns = [re.split('^VAR:', col)[1] for col in tmp.columns.values]
+        return tmp
 
     @property
     def rec(self):
-        """ DataFrame of just the REC values from the log file """
-        if self._rec is None:
-            df = self.log.filter(regex="REC:")
-            num_cols = len(df.columns)
-            if num_cols > 0:
-                df.columns = [re.split('^REC:', col)[1] for col in df.columns.values]
-            self._rec = df
-        return self._rec
+        """ DataFrame of just the REC:* values from the log file """
+        tmp = self.log.filter(regex="REC:")
+        num_cols = len(tmp.columns)
+        if num_cols > 0:
+            tmp.columns = [re.split('^REC:', col)[1] for col in tmp.columns.values]
+        return tmp
 
     ## squid info
     def attrs(self, squid=None, dataset=None):
@@ -686,5 +694,5 @@ class H5Data(object):
                   "size: \t\t %.2f MB \n" + \
                   "num groups: \t %d \n" + \
                   "author: \t %s \n" + \
-                  "description: \t %s")%(self.fil, self.size*1e-6, self.num_groups, self.author, desc)
+                  "description: \t %s")%(self.fil, self.size * 1e-6, self.num_groups, self.author, desc)
         print(output)

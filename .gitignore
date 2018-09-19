@@ -67,5 +67,8 @@ target/
 # F2
 notebooks/F2/
 
-.pytest_cache/v/cache/nodeids
+# pytest
+.pytest_cache/
+
+# Visual Studio Code
 .vscode/
