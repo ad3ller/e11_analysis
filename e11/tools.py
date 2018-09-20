@@ -141,9 +141,8 @@ def nth_dflip(arr, n=0):
             int
     """
     sign = np.sign(np.diff(arr))
-    idx = np.nonzero(sign)[0][0]
-    d0 = sign[idx]
+    d0 = sign[np.nonzero(sign)[0][0]] # first non-zero diff
     try:
-        return np.argwhere(sign == -d0)[n]
+        return np.argwhere(sign == -d0).flatten()[n]
     except:
         return -1
