@@ -291,18 +291,18 @@ class H5Scan(object):
         print(output)
 
 class H5Data(object):
-    """ For hdf5 files that contain datasets inside a single level of numbered groups, e.g.
+    """ For hdf5 files that contain datasets within a single level of numbered groups, e.g.
 
         root/
         ├── 0/
         │   ├── image
         │   ├── scope_0
         │   ├── scope_1
-        |   └── analysis
+        │   └── analysis
         ├── 1/
         │   ├── image
         │   ├── scope_0
-        |         ⋮
+        │         ⋮
         └──
     """
     def __init__(self, fil, out_dire=None, update_log=False, force=False):
