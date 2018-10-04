@@ -7,7 +7,7 @@ Created on Fri Jan 12 16:01:32 2018
 import os
 import glob
 from numbers import Number
-from collections import Iterable
+from collections.abc import Iterable
 import numpy as np
 import pandas as pd
 

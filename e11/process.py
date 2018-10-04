@@ -7,7 +7,7 @@ Created on Tue Nov 28 16:49:52 2017
 Functions for use with H5Data.apply()
 
 """
-from collections import Iterable
+from collections.abc import Iterable
 import numpy as np
 import pandas as pd
 from .core import MEASUREMENT_ID
