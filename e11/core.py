@@ -563,8 +563,7 @@ class H5Data(object):
                     dat = np.array(dfil[group][dataset])
                     arr.append(dat)
                 elif not ignore_missing:
-                    raise warnings.warn("Error: " + dataset + " not found for squid " \
-                                        + group + ".  Use ignore_missing=True if you don't care.")
+                    warnings.warn(f"missing dataset(s) for squid: {group}.")
         arr = np.concatenate(arr, axis=axis)
         if 'int' in str(arr.dtype):
             # int8 and int16 is a bit restrictive
@@ -624,8 +623,7 @@ class H5Data(object):
                         tmp = tmp[columns]
                     result[sq] = tmp
                 elif not ignore_missing:
-                    raise warnings.warn("Error: " + dataset + " not found for squid " \
-                                        + group + ".  Use ignore_missing=True if you don't care.")
+                    warnings.warn(f"missing dataset(s) for squid: {group}.")
         num = len(result)
         if num == 0:
             raise Exception('No datasets found')
@@ -649,7 +647,7 @@ class H5Data(object):
             args:
                 func           function to apply to data   (obj)
                 squids         group(s)                    (int / list/ array)
-                dataset        name of dataset             (str)
+                dataset        name of dataset(s)          (str / list/ array)
 
             kwargs:
                 ignore_missing=False    Don't complain if data is not found.
@@ -669,7 +667,7 @@ class H5Data(object):
         # initialise
         if isinstance(squids, int):
             squids = [squids]
-        if not isinstance(dataset, list):
+        if isinstance(dataset, str):
             dataset = [dataset]
         if 'keys' in kwargs and isinstance(kwargs['keys'], bool) and kwargs['keys']:
             kwargs['keys'] = dataset
@@ -684,8 +682,7 @@ class H5Data(object):
                     data = [dfil[group][ds] for ds in dataset]
                     result[sq] = func(*data, **kwargs)
                 elif not ignore_missing:
-                    raise warnings.warn("Error: missing dataset(s) for squid " \
-                                        + group + ".  Use ignore_missing=True if you don't care.")
+                    warnings.warn(f"missing dataset(s) for squid: {group}.")
         num = len(result)
         if num == 0:
             raise Exception('No data found for ' + dataset + '.')
