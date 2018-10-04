@@ -463,6 +463,7 @@ class H5Data(object):
             args:
                 squid=None                  int/ str
                 dataset=None                str
+            
             return:
                 dict()
                 
@@ -528,9 +529,9 @@ class H5Data(object):
         """ Load HDF5 array h5[squids][dataset] and its attributes.
 
             args:
-                squids      Group(s)             (int / list/ array)
-                dataset     Name of dataset      (str)
-                axis=0      Concatenation axis   (int)
+                squids      group(s)             (int / list/ array)
+                dataset     name of dataset      (str)
+                axis=0      concatenation axis   (int)
 
             kwargs:
                 ignore_missing=False   Don't complain if data is not found.
@@ -650,17 +651,19 @@ class H5Data(object):
                 dataset        name of dataset             (str)
 
             kwargs:
-                cache=None     If cache is not None, save result to h5.cache_dire/[cache].apply.pkl,
-                               or read from the file if it already exists.
-                update=False   If update then overwrite cached file.
-                info=False     Information about result. Use to check that settings of the
-                               cache match expectation.
+                ignore_missing=False    Don't complain if data is not found.
+                cache=None              If cache is not None, save result to h5.cache_dire/[cache].apply.pkl,
+                                        or read from the file if it already exists.
+                update=False            If update then overwrite cached file.
+                info=False              Information about result. Use to check that settings of the
+                                        cache match expectation.
 
                 tqdm_kwargs
 
             return:
                 func(datasets, **kwargs), [info]
         """
+        ignore_missing = kwargs.get('ignore_missing', False)
         tqdm_kwargs = get_tqdm_kwargs(kwargs)
         # initialise
         if isinstance(squids, int):
@@ -679,6 +682,9 @@ class H5Data(object):
                 if all([ds in dfil[group] for ds in dataset]):
                     data = [dfil[group][ds] for ds in dataset]
                     result[sq] = func(*data, **kwargs)
+                elif not ignore_missing:
+                    raise Exception("Error: missing dataset(s) for squid " \
+                                    + group + ".  Use ignore_missing=True if you don't care.")
         num = len(result)
         if num == 0:
             raise Exception('No data found for ' + dataset + '.')
