@@ -19,6 +19,7 @@ Created on Tue Nov 28 15:27:09 2017
 """
 import sys
 import os
+import warnings
 import inspect
 import re
 from functools import wraps
@@ -562,8 +563,8 @@ class H5Data(object):
                     dat = np.array(dfil[group][dataset])
                     arr.append(dat)
                 elif not ignore_missing:
-                    raise Exception("Error: " + dataset + " not found for squid " \
-                                    + group + ".  Use ignore_missing=True if you don't care.")
+                    raise warnings.warn("Error: " + dataset + " not found for squid " \
+                                        + group + ".  Use ignore_missing=True if you don't care.")
         arr = np.concatenate(arr, axis=axis)
         if 'int' in str(arr.dtype):
             # int8 and int16 is a bit restrictive
@@ -623,8 +624,8 @@ class H5Data(object):
                         tmp = tmp[columns]
                     result[sq] = tmp
                 elif not ignore_missing:
-                    raise Exception("Error: " + dataset + " not found for squid " \
-                                    + group + ".  Use ignore_missing=True if you don't care.")
+                    raise warnings.warn("Error: " + dataset + " not found for squid " \
+                                        + group + ".  Use ignore_missing=True if you don't care.")
         num = len(result)
         if num == 0:
             raise Exception('No datasets found')
@@ -683,8 +684,8 @@ class H5Data(object):
                     data = [dfil[group][ds] for ds in dataset]
                     result[sq] = func(*data, **kwargs)
                 elif not ignore_missing:
-                    raise Exception("Error: missing dataset(s) for squid " \
-                                    + group + ".  Use ignore_missing=True if you don't care.")
+                    raise warnings.warn("Error: missing dataset(s) for squid " \
+                                        + group + ".  Use ignore_missing=True if you don't care.")
         num = len(result)
         if num == 0:
             raise Exception('No data found for ' + dataset + '.')
