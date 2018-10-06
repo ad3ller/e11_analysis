@@ -28,14 +28,14 @@ Quick Start
 
 .. code:: ipython3
 
-    import os
-    from e11 import H5Scan
+    >>> import os
+    >>> from e11 import H5Scan
 
 .. code:: ipython3
 
-    # data file
-    fil = ".\\example_data\\microwave_scan.h5"
-    os.path.exists(fil)
+    >>> # data file
+    >>> fil = ".\\example_data\\microwave_scan.h5"
+    >>> os.path.exists(fil)
 
 .. parsed-literal::
 
@@ -43,9 +43,9 @@ Quick Start
 
 .. code:: ipython3
 
-    # list datasets
-    scan = H5Scan(fil)
-    scan.datasets
+    >>> # list datasets
+    >>> scan = H5Scan(fil)
+    >>> print(scan.datasets)
 
 .. parsed-literal::
 
@@ -53,9 +53,9 @@ Quick Start
 
 .. code:: ipython3
 
-    # array data
-    arr = scan.array('osc_0')
-    print(arr.shape)
+    >>> # array data
+    >>> arr = scan.array('osc_0')
+    >>> print(arr.shape)
 
 .. parsed-literal::
 
@@ -63,9 +63,9 @@ Quick Start
     
 .. code:: ipython3
 
-    # DataFrame data
-    df = scan.df('analysis')
-    print(df[['var', 'w0', 'f']].head())
+    >>> # DataFrame data
+    >>> df = scan.df('analysis')
+    >>> print(df[['var', 'w0', 'f']].head())
 
 .. parsed-literal::
 
