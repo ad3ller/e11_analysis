@@ -530,11 +530,12 @@ class H5Data(object):
         """ Load HDF5 array h5[squids][dataset] and its attributes.
 
             args:
-                squids      group(s)             (int / list/ array)
+                squids      group(s)             (int / list / array)
                 dataset     name of dataset      (str)
-                axis=0      concatenation axis   (int)
+                axis=0      concatenation axis   (int or None [return iterable])
 
             kwargs:
+                convert_int=False      Convert integer data types to python int
                 ignore_missing=False   Don't complain if data is not found.
 
                 cache=None     If cache is not None, save result to h5.cache_dire/[cache].array.pkl,
@@ -551,6 +552,7 @@ class H5Data(object):
             Nb. For stacking images from multiple squids use axis=2.
         """
         tqdm_kwargs = get_tqdm_kwargs(kwargs)
+        convert_int = kwargs.get('convert_int', False)
         ignore_missing = kwargs.get('ignore_missing', False)
         # initialise
         if isinstance(squids, int):
@@ -561,13 +563,13 @@ class H5Data(object):
                 group = str(sq)
                 if (group in dfil) and (dataset in dfil[group]):
                     dat = np.array(dfil[group][dataset])
+                    if convert_int and 'int' in str(dat.dtype):
+                        dat = dat.astype(int)
                     arr.append(dat)
                 elif not ignore_missing:
                     warnings.warn(f"missing dataset(s) for squid: {group}.")
-        arr = np.concatenate(arr, axis=axis)
-        if 'int' in str(arr.dtype):
-            # int8 and int16 is a bit restrictive
-            arr = arr.astype(int)
+        if axis is not None:
+            arr = np.concatenate(arr, axis=axis)
         return arr
 
     ## DataFrame data (e.g., stats)
