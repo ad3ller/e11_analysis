@@ -195,7 +195,7 @@ class H5Scan(object):
         """
         if dataset is None:
             return self.attributes
-        elif dataset not in self.datasets:
+        elif dataset not in self._datasets:
             raise LookupError("dataset = " + dataset + " not found.")
         else:
             # get dataset attributes
@@ -305,7 +305,7 @@ class H5Scan(object):
         """ print author and description info """
         output = ("file: \t\t %s \n" + \
                   "size: \t\t %.2f MB \n" + \
-                  "datasets: \t %s")%(self.fil, self.size*1e-6, self.datasets)
+                  "datasets: \t %s")%(self.fil, self.size*1e-6, self._datasets)
         print(output)
 
 class H5Data(object):
