@@ -178,8 +178,8 @@ class H5Scan(object):
         # open datafile and extract info
         with h5py.File(self.fil, 'r') as dfil:
             self.attributes = utf8_attrs(dict(dfil.attrs))
-            self.datasets = list(dict(dfil.items()).keys())
-            self.num_datasets = len(self.datasets)
+            self._datasets = list(dict(dfil.items()).keys())
+            self.num_datasets = len(self._datasets)
 
     ## attributes
     def attrs(self, dataset=None):
@@ -202,6 +202,23 @@ class H5Scan(object):
             with h5py.File(self.fil, 'r') as dfil:
                 data = dfil['.']
                 return utf8_attrs(dict(data[dataset].attrs))
+
+    def datasets(self, update=False):
+        """ Get datasets.
+
+            args:
+                update=False
+
+            return:
+                list
+                
+                names of datasets in h5
+        """
+        if self._datasets is None or update:
+            with h5py.File(self.fil, 'r') as dfil:
+                data = dfil['.']
+                self._datasets = list(data.keys())
+        return self._datasets
 
     ## array data (e.g., traces and images)
     @cashew

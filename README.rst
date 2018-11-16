@@ -45,7 +45,7 @@ Quick Start
 
     >>> # list datasets
     >>> scan = H5Scan(fil)
-    >>> print(scan.datasets)
+    >>> print(scan.datasets())
 
 .. parsed-literal::
 
