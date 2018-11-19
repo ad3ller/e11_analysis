@@ -177,7 +177,7 @@ class H5Scan(object):
             raise IOError(self.fil + " file not found.")
         # open datafile and extract info
         with h5py.File(self.fil, 'r') as dfil:
-            self.attributes = utf8_attrs(dict(dfil.attrs))
+            self._attrs = utf8_attrs(dict(dfil.attrs))
             self._datasets = list(dict(dfil.items()).keys())
             self.num_datasets = len(self._datasets)
 
@@ -194,7 +194,7 @@ class H5Scan(object):
                 h5.attributes if dataset is None else h5[dataset].attributes
         """
         if dataset is None:
-            return self.attributes
+            return self._attrs
         elif dataset not in self._datasets:
             raise LookupError("dataset = " + dataset + " not found.")
         else:
@@ -367,7 +367,7 @@ class H5Data(object):
         self._log = None
         # open datafile and extract info
         with h5py.File(self.fil, 'r') as dfil:
-            self.attributes = utf8_attrs(dict(dfil.attrs))
+            self._attrs = utf8_attrs(dict(dfil.attrs))
             self.groups = list(dict(dfil.items()).keys())
             self.num_groups = len(self.groups)
             self.squids = np.sort(np.array(self.groups).astype(int))
@@ -378,12 +378,12 @@ class H5Data(object):
     @property
     def author(self):
         """ author info """
-        return self.attributes['Author']
+        return self._attrs['Author']
 
     @property
     def desc(self):
         """ data description """
-        return self.attributes['Description']
+        return self._attrs['Description']
 
     ## log file
     def update_log(self, inplace=True, cache=True, **kwargs):
@@ -493,7 +493,7 @@ class H5Data(object):
                     h5[squid][dataset].attributes
         """
         if squid is None:
-            return self.attributes
+            return self._attrs
         # check squid
         elif isinstance(squid, str):
             group = squid
