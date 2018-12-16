@@ -32,7 +32,7 @@ from tqdm import tqdm
 from .tools import sub_dire, get_tqdm_kwargs, utf8_attrs
 
 # constants
-MEASUREMENT_ID = 'measurement'
+MEASUREMENT_ID = "measurement"
 
 def run_file(base, rid, ftype="_data.h5", check=True):
     """ Build path to data file using run ID.
@@ -61,10 +61,10 @@ def run_file(base, rid, ftype="_data.h5", check=True):
     if check:
         if not os.path.isdir(dire):
             # run ID directory not found
-            raise IOError(dire + " folder not found.")
+            raise IOError(f"{dire} folder not found.")
         elif not os.path.isfile(fil):
             # run ID file not found
-            raise IOError(fil + " file not found.")
+            raise IOError(f"{fil} file not found.")
     return fil
 
 def cashew(method):
@@ -84,9 +84,9 @@ def cashew(method):
     def wrapper(h5, *args, **kwargs):
         """ function wrapper
         """
-        cache = kwargs.get('cache', None)
-        update = kwargs.get('update', False)
-        get_info = kwargs.get('info', False)
+        cache = kwargs.get("cache", None)
+        update = kwargs.get("update", False)
+        get_info = kwargs.get("info", False)
         # TODO check info option
         if cache is None:
             cache = False
@@ -94,34 +94,34 @@ def cashew(method):
         sig = inspect.signature(method)
         arg_names = list(sig.parameters.keys())
         arg_names = arg_names[1:-1] # drop self and kwargs
-        arg_values = [arg.__name__ if hasattr(arg, '__name__') else arg for arg in args]
+        arg_values = [arg.__name__ if hasattr(arg, "__name__") else arg for arg in args]
         info = dict(zip(arg_names, arg_values))
-        info['method'] = method.__name__
+        info["method"] = method.__name__
         # config cache
         if cache:
             if h5.cache_dire is None:
-                raise Exception('cannot cache file without h5.cache_dire')
+                raise Exception("cannot cache file without h5.cache_dire")
             elif isinstance(cache, bool):
                 # TODO flatten args to default cache name
-                fname = method.__name__ + '.pkl'
+                fname = method.__name__ + ".pkl"
             elif isinstance(cache, str):
-                fname = (os.path.splitext(cache)[0]) + '.' + method.__name__ + '.pkl'
+                fname = (os.path.splitext(cache)[0]) + "." + method.__name__ + ".pkl"
             else:
-                raise Exception('kwarg cache must be str or True')
+                raise Exception("kwarg cache dtype must be str or True")
             cache_file = os.path.join(h5.cache_dire, fname)
         # read cache ...
         if not update and cache and os.path.isfile(cache_file):
             result, info = pd.read_pickle(cache_file)
-            info['cache'] = cache_file
+            info["cache"] = cache_file
         # ... or apply func ...
         else:
             result = method(h5, *args, **kwargs)
-            info['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            info["datetime"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             # ... and update cache.
             if cache:
                 obj = (result, info)
                 pd.to_pickle(obj, cache_file)
-            info['cache'] = False
+            info["cache"] = False
         # result
         if get_info:
             return result, info
@@ -148,7 +148,7 @@ class H5Scan(object):
                 if os.path.isdir(out_dire):
                     self.out_dire = out_dire
                 else:
-                    raise Exception(out_dire + ' does not exist.')
+                    raise Exception(f"{out_dire} does not exist.")
             else:
                 # relative path
                 self.out_dire = os.path.join(self.dire, out_dire)
@@ -157,8 +157,8 @@ class H5Scan(object):
                         # don't ask, use the force
                         os.makedirs(self.out_dire)
                     else:
-                        response = input(self.out_dire + ' does not exist.  Create? [Y/n]: ')
-                        create = response.upper() in ['Y', 'YES']
+                        response = input(f"{self.out_dire} does not exist.  Create? [Y/N]: ")
+                        create = response.upper() in ["Y", "YES"]
                         if create:
                             os.makedirs(self.out_dire)
                         else:
@@ -170,13 +170,13 @@ class H5Scan(object):
         if self.out_dire is None:
             self.cache_dire = None
         else:
-            self.cache_dire = sub_dire(self.out_dire, 'cache')
+            self.cache_dire = sub_dire(self.out_dire, "cache")
         # datafile
         if not os.path.isfile(self.fil):
             # file not found
-            raise IOError(self.fil + " file not found.")
+            raise IOError(f"{self.fil} file not found.")
         # open datafile and extract info
-        with h5py.File(self.fil, 'r') as dfil:
+        with h5py.File(self.fil, "r") as dfil:
             self._attrs = utf8_attrs(dict(dfil.attrs))
             self._datasets = list(dict(dfil.items()).keys())
             self.num_datasets = len(self._datasets)
@@ -199,8 +199,8 @@ class H5Scan(object):
             raise LookupError("dataset = " + dataset + " not found.")
         else:
             # get dataset attributes
-            with h5py.File(self.fil, 'r') as dfil:
-                data = dfil['.']
+            with h5py.File(self.fil, "r") as dfil:
+                data = dfil["."]
                 return utf8_attrs(dict(data[dataset].attrs))
 
     def datasets(self, update=False):
@@ -215,8 +215,8 @@ class H5Scan(object):
                 names of datasets in h5
         """
         if self._datasets is None or update:
-            with h5py.File(self.fil, 'r') as dfil:
-                data = dfil['.']
+            with h5py.File(self.fil, "r") as dfil:
+                data = dfil["."]
                 self._datasets = list(data.keys())
         return self._datasets
 
@@ -240,12 +240,12 @@ class H5Scan(object):
 
         """
         # initialise
-        with h5py.File(self.fil, 'r') as dfil:
+        with h5py.File(self.fil, "r") as dfil:
             if dataset in dfil:
                 arr = np.array(dfil[dataset])
             else:
                 raise Exception("Error: " + dataset + " not found.")
-        if 'int' in str(arr.dtype):
+        if "int" in str(arr.dtype):
             # int8 and int16 is a bit restrictive
             arr = arr.astype(int)
         return arr
@@ -276,10 +276,10 @@ class H5Scan(object):
             return:
                 df (pd.DataFrame)
         """
-        label = kwargs.get('label', None)
-        columns_astype_str = kwargs.get('columns_astype_str', False)
+        label = kwargs.get("label", None)
+        columns_astype_str = kwargs.get("columns_astype_str", False)
         # open file
-        with h5py.File(self.fil, 'r') as dfil:
+        with h5py.File(self.fil, "r") as dfil:
             if dataset in dfil:
                 if columns is None:
                     df = pd.DataFrame(np.array(dfil[dataset]))
@@ -335,7 +335,7 @@ class H5Data(object):
                 if os.path.isdir(out_dire):
                     self.out_dire = out_dire
                 else:
-                    raise Exception(out_dire + ' does not exist.')
+                    raise Exception(f"{out_dire} does not exist.")
             else:
                 # relative path
                 self.out_dire = os.path.join(self.dire, out_dire)
@@ -343,8 +343,8 @@ class H5Data(object):
                     if force:
                         os.makedirs(self.out_dire)
                     else:
-                        response = input(self.out_dire + ' does not exist.  Create? [Y/n]: ')
-                        create = response.upper() in ['Y', 'YES']
+                        response = input(self.out_dire + " does not exist.  Create? [Y/N]: ")
+                        create = response.upper() in ["Y", "YES"]
                         if create:
                             os.makedirs(self.out_dire)
                         else:
@@ -357,8 +357,8 @@ class H5Data(object):
             self.cache_dire = None
             self.log_file = None
         else:
-            self.cache_dire = sub_dire(self.out_dire, 'cache')
-            self.log_file = os.path.join(self.cache_dire, 'log.pkl')
+            self.cache_dire = sub_dire(self.out_dire, "cache")
+            self.log_file = os.path.join(self.cache_dire, "log.pkl")
         # datafile
         if not os.path.isfile(self.fil):
             # file not found
@@ -366,7 +366,7 @@ class H5Data(object):
         # initialise log cache
         self._log = None
         # open datafile and extract info
-        with h5py.File(self.fil, 'r') as dfil:
+        with h5py.File(self.fil, "r") as dfil:
             self._attrs = utf8_attrs(dict(dfil.attrs))
             self.groups = list(dict(dfil.items()).keys())
             self.num_groups = len(self.groups)
@@ -378,34 +378,34 @@ class H5Data(object):
     @property
     def author(self):
         """ author info """
-        return self._attrs['Author']
+        return self._attrs["Author"]
 
     @property
     def desc(self):
         """ data description """
-        return self._attrs['Description']
+        return self._attrs["Description"]
 
     ## log file
     def update_log(self, inplace=True, cache=True, **kwargs):
         """ Read squid attributes and save as cache/log.pkl.
         """       
         tqdm_kwargs = get_tqdm_kwargs(kwargs)
-        with h5py.File(self.fil, 'r') as dfil:
+        with h5py.File(self.fil, "r") as dfil:
             # read attributes from each squid
             result = dict()
             for group in tqdm(self.groups, **tqdm_kwargs):
                 # read info
                 result[int(group)] = utf8_attrs(dict(dfil[group].attrs))
-            result = pd.DataFrame.from_dict(result, orient='index').sort_index(axis=0).sort_index(axis=1)
-            result.index.name = 'squid'
-            if 'SQUID' in result:
+            result = pd.DataFrame.from_dict(result, orient="index").sort_index(axis=0).sort_index(axis=1)
+            result.index.name = "squid"
+            if "SQUID" in result:
                 # remove duplicate squid column
-                result = result.drop('SQUID', axis=1)
-            if 'ACQUIRE' not in result and 'START' in result and 'END' in result:
-                result['ACQUIRE'] = result['END'] - result['START']
-            if 'DATETIME' in result:
+                result = result.drop("SQUID", axis=1)
+            if "ACQUIRE" not in result and "START" in result and "END" in result:
+                result["ACQUIRE"] = result["END"] - result["START"]
+            if "DATETIME" in result:
                 result.DATETIME = pd.to_datetime(result.DATETIME)
-                result['ELAPSED'] = (result.DATETIME - result.DATETIME.min())
+                result["ELAPSED"] = (result.DATETIME - result.DATETIME.min())
         # save to pickle file
         if cache and self.log_file is not None:
             result.to_pickle(self.log_file)
@@ -462,7 +462,7 @@ class H5Data(object):
         tmp = self.log.filter(regex="VAR:")
         num_cols = len(tmp.columns)
         if num_cols > 0:
-            tmp.columns = [re.split('^VAR:', col)[1] for col in tmp.columns.values]
+            tmp.columns = [re.split("^VAR:", col)[1] for col in tmp.columns.values]
         return tmp
 
     @property
@@ -471,7 +471,7 @@ class H5Data(object):
         tmp = self.log.filter(regex="REC:")
         num_cols = len(tmp.columns)
         if num_cols > 0:
-            tmp.columns = [re.split('^REC:', col)[1] for col in tmp.columns.values]
+            tmp.columns = [re.split("^REC:", col)[1] for col in tmp.columns.values]
         return tmp
 
     ## squid info
@@ -500,24 +500,24 @@ class H5Data(object):
         elif isinstance(squid, int) or isinstance(squid, np.integer):
             group = str(squid)
         else:
-            raise TypeError('squid.dtype must be int or str.')
+            raise TypeError("squid.dtype must be int or str.")
         # check squid
         if group not in self.groups:
             raise LookupError("squid = " + group + " not found.")
         if dataset is None:
             # get group attributes
-            with h5py.File(self.fil, 'r') as dfil:
-                data = dfil['.']
+            with h5py.File(self.fil, "r") as dfil:
+                data = dfil["."]
                 return utf8_attrs(dict(data[group].attrs))
         # dataset info
         elif not isinstance(dataset, str):
-            raise TypeError('dataset must be a str.')
+            raise TypeError("dataset must be a str.")
         else:
-            with h5py.File(self.fil, 'r') as dfil:
-                data = dfil['.']
+            with h5py.File(self.fil, "r") as dfil:
+                data = dfil["."]
                 if dataset in data[group]:
                     attributes = utf8_attrs(dict(data[group][dataset].attrs))
-                    attributes['squid'] = squid
+                    attributes["squid"] = squid
                     return attributes
                 else:
                     raise LookupError("dataset = " + dataset + " not found for squid = ." + group)
@@ -537,8 +537,8 @@ class H5Data(object):
         if group not in self.groups:
             raise LookupError("squid = " + group + " not found.")
         else:
-            with h5py.File(self.fil, 'r') as dfil:
-                data = dfil['.']
+            with h5py.File(self.fil, "r") as dfil:
+                data = dfil["."]
                 return list(data[group].keys())
 
     ## array data (e.g., traces and images)
@@ -569,18 +569,18 @@ class H5Data(object):
             Nb. For stacking images from multiple squids use axis=2.
         """
         tqdm_kwargs = get_tqdm_kwargs(kwargs)
-        convert_int = kwargs.get('convert_int', False)
-        ignore_missing = kwargs.get('ignore_missing', False)
+        convert_int = kwargs.get("convert_int", False)
+        ignore_missing = kwargs.get("ignore_missing", False)
         # initialise
         if isinstance(squids, int):
             squids = [squids]
         arr = []
-        with h5py.File(self.fil, 'r') as dfil:
+        with h5py.File(self.fil, "r") as dfil:
             for sq in tqdm(squids, **tqdm_kwargs):
                 group = str(sq)
                 if (group in dfil) and (dataset in dfil[group]):
                     dat = np.array(dfil[group][dataset])
-                    if convert_int and 'int' in str(dat.dtype):
+                    if convert_int and "int" in str(dat.dtype):
                         dat = dat.astype(int)
                     arr.append(dat)
                 elif not ignore_missing:
@@ -623,15 +623,15 @@ class H5Data(object):
                 df (pd.DataFrame) [info (dict)]
         """
         tqdm_kwargs = get_tqdm_kwargs(kwargs)
-        label = kwargs.get('label', None)
-        ignore_missing = kwargs.get('ignore_missing', False)
-        columns_astype_str = kwargs.get('columns_astype_str', False)
+        label = kwargs.get("label", None)
+        ignore_missing = kwargs.get("ignore_missing", False)
+        columns_astype_str = kwargs.get("columns_astype_str", False)
         # initialise
         if isinstance(squids, int):
             squids = [squids]
         result = dict()
         # open file
-        with h5py.File(self.fil, 'r') as dfil:
+        with h5py.File(self.fil, "r") as dfil:
             # loop over squid values
             for sq in tqdm(squids, **tqdm_kwargs):
                 group = str(sq)
@@ -645,8 +645,8 @@ class H5Data(object):
                     warnings.warn(f"missing dataset(s) for squid: {group}.")
         num = len(result)
         if num == 0:
-            raise Exception('No datasets found')
-        result = pd.concat(result, names=['squid'])
+            raise Exception("No datasets found")
+        result = pd.concat(result, names=["squid"])
         # convert column names to str
         if columns_astype_str:
             result.columns = np.array(result.columns.values).astype(str)
@@ -681,21 +681,21 @@ class H5Data(object):
             return:
                 func(datasets, **kwargs), [info]
         """
-        ignore_missing = kwargs.get('ignore_missing', False)
+        ignore_missing = kwargs.get("ignore_missing", False)
         tqdm_kwargs = get_tqdm_kwargs(kwargs)
         # initialise
         if isinstance(squids, int):
             squids = [squids]
         if isinstance(dataset, str):
             dataset = [dataset]
-        if 'keys' in kwargs and isinstance(kwargs['keys'], bool) and kwargs['keys']:
-            kwargs['keys'] = dataset
+        if "keys" in kwargs and isinstance(kwargs["keys"], bool) and kwargs["keys"]:
+            kwargs["keys"] = dataset
         # initialise output
         result = dict()
         # open file
-        with h5py.File(self.fil, 'r') as dfil:
+        with h5py.File(self.fil, "r") as dfil:
             # loop over each squid
-            for sq in tqdm(squids, unit='sq', **tqdm_kwargs):
+            for sq in tqdm(squids, unit="sq", **tqdm_kwargs):
                 group = str(sq)
                 if all([ds in dfil[group] for ds in dataset]):
                     data = [dfil[group][ds] for ds in dataset]
@@ -704,15 +704,15 @@ class H5Data(object):
                     warnings.warn(f"missing dataset(s) for squid: {group}.")
         num = len(result)
         if num == 0:
-            raise Exception('No data found for ' + dataset + '.')
-        result = pd.concat(result, names=['squid'])
+            raise Exception(f"No data found for {dataset}.")
+        result = pd.concat(result, names=["squid"])
         # output
         return result
 
     ## misc. tools
     def pprint(self):
         """ print author and description info """
-        desc = self.desc.replace('\n', '\n\t\t ')
+        desc = self.desc.replace("\n", "\n\t\t ")
         output = ("file: \t\t %s \n" + \
                   "size: \t\t %.2f MB \n" + \
                   "num groups: \t %d \n" + \

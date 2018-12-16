@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from .core import MEASUREMENT_ID
 
-def threshold_trigger(arr, dt, min_level, min_width, bksub=50, invert=True, transpose=False, name='event'):
+def threshold_trigger(arr, dt, min_level, min_width, bksub=50, invert=True, transpose=False, name="event"):
     """ Search for trigger events in array data using a threshold condition.
 
         args:
@@ -27,7 +27,7 @@ def threshold_trigger(arr, dt, min_level, min_width, bksub=50, invert=True, tran
             name="event"    index name
         
         return:
-            pd.DataFrame(['time', 'width', 'amplitude'])
+            pd.DataFrame(["time", "width", "amplitude"])
 
     """
     assert len(arr.shape) == 2, "arr must be a 2D numpy array"
@@ -53,7 +53,7 @@ def threshold_trigger(arr, dt, min_level, min_width, bksub=50, invert=True, tran
             time = pulse[:, 0] * dt
             width = (pulse[:, 1] - pulse[:, 0]) * dt
             amp = [np.max(row[slice(*p)]) for p in pulse]
-            df = pd.DataFrame(np.array([time, width, amp]).T, columns=(['time', 'width', 'amplitude']))
+            df = pd.DataFrame(np.array([time, width, amp]).T, columns=(["time", "width", "amplitude"]))
             df.index.rename(name, inplace=True)
             result[i] = df
     return pd.concat(result, names=[MEASUREMENT_ID])

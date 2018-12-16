@@ -14,7 +14,7 @@ import pandas as pd
 def sub_dire(dire, name, file_name=None):
     """ Build path to a sub-directory of dire.  Create if does not exist."""
     if dire is None:
-        raise Exception('Cannot build sub_dire because dire is None.')
+        raise Exception("Cannot build sub_dire because dire is None.")
     else:
         path = os.path.join(dire, name)
         if not os.path.exists(path):
@@ -23,21 +23,21 @@ def sub_dire(dire, name, file_name=None):
             path = os.path.join(path, file_name)
         return path
 
-def ls(dire, regex='*', full_output=True, report=False):
+def ls(dire, regex="*", full_output=True, report=False):
     """ List the contents of dire.
 
         e.g., to list pickle files in the cache,
-            ls(h5.cache_dire, regex='*.pkl')
+            ls(h5.cache_dire, regex="*.pkl")
     """
     # folder
     if dire is None:
-        raise Exception('can`t read from None directory')
+        raise Exception("Cannot read from None directory.")
     # check exists
     if not os.path.isdir(dire):
-        raise Exception(dire + ' does not exist.')
+        raise Exception(f"{dire} does not exist.")
     fils = glob.glob(os.path.join(dire, regex))
     if report:
-        print('Found %d matches to %s in `%s`'%(len(fils), regex, dire))
+        print(f"Found {len(fils)} matches to {regex} in {dire}.")
     if full_output:
         return fils
     fnames = [os.path.split(f)[1] for f in fils]
@@ -60,7 +60,7 @@ def t_index(time, dt=1.0, t0=0.0):
 def get_tqdm_kwargs(kwargs):
     """ filter kwargs to those prepended by `tqdm_` and strip.
     """
-    return dict([(key.replace('tqdm_', ''), val) for key, val in kwargs.items() if 'tqdm_' in key])
+    return dict([(key.replace("tqdm_", ""), val) for key, val in kwargs.items() if "tqdm_" in key])
 
 def utf8_attrs(info):
     """ convert bytes to utf8
@@ -73,23 +73,23 @@ def utf8_attrs(info):
     """
     for key, val in info.items():
         if isinstance(val, bytes):
-            info[key] = val.decode('utf8')
+            info[key] = val.decode("utf8")
     return info
 
-def add_level(df, label='', position='first'):
+def add_level(df, label="", position="first"):
     """ 
         Add a level to pd.MultiIndex columns.
 
         This can be useful when joining DataFrames with / without multiindex columns.
 
         >>> st = statistics(a_df)                # MultiIndex DataFrame
-        >>> add_level(h5.var, 'VAR').join(st)
+        >>> add_level(h5.var, "VAR").join(st)
 
         args:
             df          object to add index level to    pd.DataFrame()
-            label=''    value(s) of the added level(s)  str() / list(str)
+            label=""    value(s) of the added level(s)  str() / list(str)
             position=0
-                        position of level to add        'first', 'last' or int
+                        position of level to add        "first", "last" or int
 
         return:
             df.copy() with pd.MultiIndex()
@@ -102,7 +102,7 @@ def add_level(df, label='', position='first'):
     # reverse the label list (more intuitve behaviour?)
     label = label[::-1]
     # position is first?
-    if position == 'first':
+    if position == "first":
         position = 0
     # if df is Series then convert to DataFrame
     if isinstance(df2, pd.Series):
@@ -115,7 +115,7 @@ def add_level(df, label='', position='first'):
             if not isinstance(col, tuple):
                 col = (col,)
             col = list(col)
-            if position == 'last':
+            if position == "last":
                 col.append(lbl)
             else:
                 col.insert(position, lbl)

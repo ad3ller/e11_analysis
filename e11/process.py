@@ -30,7 +30,7 @@ def process_array(*data, func, subset, keys=None, convert_int=True, **kwargs):
     """
     result = []
     for arr in data:
-        if convert_int and 'int' in str(arr.dtype):
+        if convert_int and "int" in str(arr.dtype):
             arr = arr.astype(int)
         if subset is not None:
             arr = arr[subset]
@@ -39,7 +39,7 @@ def process_array(*data, func, subset, keys=None, convert_int=True, **kwargs):
     df.index.name = MEASUREMENT_ID
     return df
 
-def vrange(*data, axis=1, subset=None, name='vrange', keys=None, **kwargs):
+def vrange(*data, axis=1, subset=None, name="vrange", keys=None, **kwargs):
     """ Calculate the vertical range for an array dataset.
 
         args:
@@ -58,7 +58,7 @@ def vrange(*data, axis=1, subset=None, name='vrange', keys=None, **kwargs):
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
 
-def total(*data, axis=1, subset=None, name='total', keys=None, **kwargs):
+def total(*data, axis=1, subset=None, name="total", keys=None, **kwargs):
     """ Calculate the total value for an array dataset.
 
         args:
@@ -77,7 +77,7 @@ def total(*data, axis=1, subset=None, name='total', keys=None, **kwargs):
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
 
-def mean(*data, axis=1, subset=None, name='mean', keys=None, **kwargs):
+def mean(*data, axis=1, subset=None, name="mean", keys=None, **kwargs):
     """ Calculate the mean value for an array dataset.
 
         args:
@@ -96,7 +96,7 @@ def mean(*data, axis=1, subset=None, name='mean', keys=None, **kwargs):
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
 
-def median(*data, axis=1, subset=None, name='median', keys=None, **kwargs):
+def median(*data, axis=1, subset=None, name="median", keys=None, **kwargs):
     """ Calculate the median value for an array dataset.
 
         args:
@@ -115,7 +115,7 @@ def median(*data, axis=1, subset=None, name='median', keys=None, **kwargs):
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
 
-def mean_std(*data, axis=1, subset=None, columns=['mean', 'std'], keys=None, **kwargs):
+def mean_std(*data, axis=1, subset=None, columns=["mean", "std"], keys=None, **kwargs):
     """ Calculate the mean and standard deviation for an array dataset.
 
         args:
@@ -124,7 +124,7 @@ def mean_std(*data, axis=1, subset=None, columns=['mean', 'std'], keys=None, **k
         kwargs:
             axis=1         apply along axis=axis.
             subset=None    slice the array data
-            columns=['mean', 'std']
+            columns=["mean", "std"]
                            column names
             keys=None      list of names for each dataset
 
@@ -157,7 +157,7 @@ def triggers(arr, dt, min_level, min_width, subset=None, **kwargs):
             name="event"    index name
         
         return:
-            pd.DataFrame(['time', 'width', 'amplitude'])
+            pd.DataFrame(["time", "width", "amplitude"])
     """
     if subset is not None:
         arr = arr[subset]
