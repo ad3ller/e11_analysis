@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 import IPython
 from tqdm import tqdm
-from .tools import sub_dire, get_tqdm_kwargs, utf8_attrs
+from .tools import sub_dire, utf8_attrs
 
 # constants
 MEASUREMENT_ID = "measurement"
@@ -100,7 +100,7 @@ def cashew(method):
         # config cache
         if cache:
             if h5.cache_dire is None:
-                raise Exception("cannot cache file without h5.cache_dire")
+                raise Exception("Cannot cache file without h5.cache_dire.")
             elif isinstance(cache, bool):
                 # TODO flatten args to default cache name
                 fname = method.__name__ + ".pkl"
@@ -196,7 +196,7 @@ class H5Scan(object):
         if dataset is None:
             return self._attrs
         elif dataset not in self._datasets:
-            raise LookupError("dataset = " + dataset + " not found.")
+            raise LookupError(f"{dataset} not found.")
         else:
             # get dataset attributes
             with h5py.File(self.fil, "r") as dfil:
@@ -244,7 +244,7 @@ class H5Scan(object):
             if dataset in dfil:
                 arr = np.array(dfil[dataset])
             else:
-                raise Exception("Error: " + dataset + " not found.")
+                raise Exception(f"{dataset} not found.")
         if "int" in str(arr.dtype):
             # int8 and int16 is a bit restrictive
             arr = arr.astype(int)
@@ -286,7 +286,7 @@ class H5Scan(object):
                 else:
                     df = pd.DataFrame(np.array(dfil[dataset]))[columns]
             else:
-                raise Exception("Error: " + dataset + " not found.")
+                raise Exception(f"{dataset} not found.")
         df.index.name = MEASUREMENT_ID
         # convert column names to str
         if columns_astype_str:
@@ -323,7 +323,7 @@ class H5Data(object):
         │         ⋮
         └──
     """
-    def __init__(self, fil, out_dire=None, update_log=False, force=False):
+    def __init__(self, fil, out_dire=None, update_log=False, force=False, tqdm_kw=dict()):
         # data file
         self.fil = fil
         self.dire = os.path.dirname(self.fil)
@@ -362,7 +362,7 @@ class H5Data(object):
         # datafile
         if not os.path.isfile(self.fil):
             # file not found
-            raise IOError(self.fil + " file not found.")
+            raise IOError(f"{self.fil} file not found.")
         # initialise log cache
         self._log = None
         # open datafile and extract info
@@ -373,7 +373,7 @@ class H5Data(object):
             self.squids = np.sort(np.array(self.groups).astype(int))
         # log file
         if update_log:
-            self.update_log()
+            self.update_log(tqdm_kw=tqdm_kw)
 
     @property
     def author(self):
@@ -389,11 +389,11 @@ class H5Data(object):
     def update_log(self, inplace=True, cache=True, **kwargs):
         """ Read squid attributes and save as cache/log.pkl.
         """       
-        tqdm_kwargs = get_tqdm_kwargs(kwargs)
+        tqdm_kw = kwargs.get("tqdm_kw", dict())
         with h5py.File(self.fil, "r") as dfil:
             # read attributes from each squid
             result = dict()
-            for group in tqdm(self.groups, **tqdm_kwargs):
+            for group in tqdm(self.groups, **tqdm_kw):
                 # read info
                 result[int(group)] = utf8_attrs(dict(dfil[group].attrs))
             result = pd.DataFrame.from_dict(result, orient="index").sort_index(axis=0).sort_index(axis=1)
@@ -424,9 +424,9 @@ class H5Data(object):
             >>> h5.load_log()
         """
         if self.log_file is None:
-            raise Exception("log_file not defined")
+            raise Exception("log_file not defined.")
         elif not os.path.exists(self.log_file):
-            raise Exception("log_file not found")
+            raise Exception("log_file not found.")
         else:
             # read cached file
             log_df = pd.read_pickle(self.log_file)
@@ -503,7 +503,7 @@ class H5Data(object):
             raise TypeError("squid.dtype must be int or str.")
         # check squid
         if group not in self.groups:
-            raise LookupError("squid = " + group + " not found.")
+            raise LookupError(f"squid={group} not found.")
         if dataset is None:
             # get group attributes
             with h5py.File(self.fil, "r") as dfil:
@@ -520,7 +520,7 @@ class H5Data(object):
                     attributes["squid"] = squid
                     return attributes
                 else:
-                    raise LookupError("dataset = " + dataset + " not found for squid = ." + group)
+                    raise LookupError(f"{dataset} not found for squid={group}.")
 
     def datasets(self, squid=1):
         """ Get group datasets.
@@ -535,7 +535,7 @@ class H5Data(object):
         """
         group = str(squid)
         if group not in self.groups:
-            raise LookupError("squid = " + group + " not found.")
+            raise LookupError(f"squid={group} not found.")
         else:
             with h5py.File(self.fil, "r") as dfil:
                 data = dfil["."]
@@ -561,22 +561,22 @@ class H5Data(object):
                 info=False     Information about result. Use to check that settings of the
                                cache match expectation.
 
-                tqdm_kwargs
+                tqdm_kw        dict()
 
             return:
                 array (np.array) [info (dict)]
 
             Nb. For stacking images from multiple squids use axis=2.
         """
-        tqdm_kwargs = get_tqdm_kwargs(kwargs)
         convert_int = kwargs.get("convert_int", False)
         ignore_missing = kwargs.get("ignore_missing", False)
+        tqdm_kw = kwargs.get("tqdm_kw", dict())
         # initialise
         if isinstance(squids, int):
             squids = [squids]
         arr = []
         with h5py.File(self.fil, "r") as dfil:
-            for sq in tqdm(squids, **tqdm_kwargs):
+            for sq in tqdm(squids, **tqdm_kw):
                 group = str(sq)
                 if (group in dfil) and (dataset in dfil[group]):
                     dat = np.array(dfil[group][dataset])
@@ -617,15 +617,15 @@ class H5Data(object):
                 info=False     Information about result. Use to inspect the settings of the
                                cache file.
 
-                tqdm_kwargs
+                tqdm_kw        dict()
 
             return:
                 df (pd.DataFrame) [info (dict)]
         """
-        tqdm_kwargs = get_tqdm_kwargs(kwargs)
         label = kwargs.get("label", None)
         ignore_missing = kwargs.get("ignore_missing", False)
         columns_astype_str = kwargs.get("columns_astype_str", False)
+        tqdm_kw = kwargs.get("tqdm_kw", dict())
         # initialise
         if isinstance(squids, int):
             squids = [squids]
@@ -633,7 +633,7 @@ class H5Data(object):
         # open file
         with h5py.File(self.fil, "r") as dfil:
             # loop over squid values
-            for sq in tqdm(squids, **tqdm_kwargs):
+            for sq in tqdm(squids, **tqdm_kw):
                 group = str(sq)
                 if (group in dfil) and (dataset in dfil[group]):
                     tmp = pd.DataFrame(np.array(dfil[group][dataset]))
@@ -676,13 +676,13 @@ class H5Data(object):
                 info=False              Information about result. Use to check that settings of the
                                         cache match expectation.
 
-                tqdm_kwargs
+                tqdm_kw                 dict()
 
             return:
                 func(datasets, **kwargs), [info]
         """
         ignore_missing = kwargs.get("ignore_missing", False)
-        tqdm_kwargs = get_tqdm_kwargs(kwargs)
+        tqdm_kw = kwargs.get("tqdm_kw", dict())
         # initialise
         if isinstance(squids, int):
             squids = [squids]
@@ -695,7 +695,7 @@ class H5Data(object):
         # open file
         with h5py.File(self.fil, "r") as dfil:
             # loop over each squid
-            for sq in tqdm(squids, unit="sq", **tqdm_kwargs):
+            for sq in tqdm(squids, unit="sq", **tqdm_kw):
                 group = str(sq)
                 if all([ds in dfil[group] for ds in dataset]):
                     data = [dfil[group][ds] for ds in dataset]

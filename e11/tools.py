@@ -57,11 +57,6 @@ def t_index(time, dt=1.0, t0=0.0):
     else:
         raise TypeError("time must be a number or list of numbers.")
 
-def get_tqdm_kwargs(kwargs):
-    """ filter kwargs to those prepended by `tqdm_` and strip.
-    """
-    return dict([(key.replace("tqdm_", ""), val) for key, val in kwargs.items() if "tqdm_" in key])
-
 def utf8_attrs(info):
     """ convert bytes to utf8
 
