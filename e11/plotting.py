@@ -9,8 +9,9 @@ Created on Fri May 10 17:14:09 2018
 """
 import numpy as np
 
+
 def floating_xticks(ax, xticks, y_pos, length, **kwargs):
-    """ draw ticks inside ax at y=pos. 
+    """ draw ticks inside ax at y=pos.
     """
     if "color" not in kwargs:
         kwargs["color"] = "k"
@@ -20,6 +21,7 @@ def floating_xticks(ax, xticks, y_pos, length, **kwargs):
     for tx in xticks:
         ax.plot([tx, tx], [y_pos, y_pos + length], **kwargs)
     return ax
+
 
 def floating_xlabels(ax, xticks, labels, y_pos, **kwargs):
     """ draw labels at x=ticks inside ax at y=y_pos.

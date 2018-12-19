@@ -7,11 +7,11 @@ Created on Tue Nov 28 16:49:52 2017
 Functions for use with H5Data.apply()
 
 """
-from collections.abc import Iterable
 import numpy as np
 import pandas as pd
 from .core import MEASUREMENT_ID
 from .trigs import threshold_trigger
+
 
 def process_array(*data, func, subset, keys=None, convert_int=True, **kwargs):
     """ Process array dataset using func.
@@ -20,9 +20,10 @@ def process_array(*data, func, subset, keys=None, convert_int=True, **kwargs):
             data              [np.array()]
             func              function to apply
             subset            slice the array data
-        
+
         kwargs:
-            keys=None         list of names of each dataset for use with MultiIndex
+            keys=None         list of names of each dataset for use with
+                              MultiIndex
             convert_int=True  convert any integer types to int
 
         return:
@@ -39,6 +40,7 @@ def process_array(*data, func, subset, keys=None, convert_int=True, **kwargs):
     df.index.name = MEASUREMENT_ID
     return df
 
+
 def vrange(*data, axis=1, subset=None, name="vrange", keys=None, **kwargs):
     """ Calculate the vertical range for an array dataset.
 
@@ -54,9 +56,11 @@ def vrange(*data, axis=1, subset=None, name="vrange", keys=None, **kwargs):
         return:
             pd.DataFrame()
     """
-    func = lambda arr : pd.Series(np.max(arr, axis=axis) - np.min(arr, axis=axis), name=name)
+    func = lambda arr: pd.Series(np.max(arr, axis=axis) -
+                                 np.min(arr, axis=axis), name=name)
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
+
 
 def total(*data, axis=1, subset=None, name="total", keys=None, **kwargs):
     """ Calculate the total value for an array dataset.
@@ -73,9 +77,10 @@ def total(*data, axis=1, subset=None, name="total", keys=None, **kwargs):
         return:
             pd.DataFrame()
     """
-    func = lambda arr : pd.Series(np.sum(arr, axis=axis), name=name)
+    func = lambda arr: pd.Series(np.sum(arr, axis=axis), name=name)
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
+
 
 def mean(*data, axis=1, subset=None, name="mean", keys=None, **kwargs):
     """ Calculate the mean value for an array dataset.
@@ -92,9 +97,10 @@ def mean(*data, axis=1, subset=None, name="mean", keys=None, **kwargs):
         return:
             pd.DataFrame()
     """
-    func = lambda arr : pd.Series(np.mean(arr, axis=axis), name=name)
+    func = lambda arr: pd.Series(np.mean(arr, axis=axis), name=name)
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
+
 
 def median(*data, axis=1, subset=None, name="median", keys=None, **kwargs):
     """ Calculate the median value for an array dataset.
@@ -111,11 +117,13 @@ def median(*data, axis=1, subset=None, name="median", keys=None, **kwargs):
         return:
             pd.DataFrame()
     """
-    func = lambda arr : pd.Series(np.median(arr, axis=axis), name=name)
+    func = lambda arr: pd.Series(np.median(arr, axis=axis), name=name)
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
 
-def mean_std(*data, axis=1, subset=None, columns=["mean", "std"], keys=None, **kwargs):
+
+def mean_std(*data, axis=1, subset=None, columns=["mean", "std"], keys=None,
+             **kwargs):
     """ Calculate the mean and standard deviation for an array dataset.
 
         args:
@@ -134,9 +142,12 @@ def mean_std(*data, axis=1, subset=None, columns=["mean", "std"], keys=None, **k
         notes:
             numpy.std() does not include the Bessel correction
     """
-    func = lambda arr : pd.DataFrame(np.array([np.mean(arr, axis=axis), np.std(arr, axis=axis)]).T, columns=columns)
+    func = lambda arr: pd.DataFrame(np.array([np.mean(arr, axis=axis),
+                                              np.std(arr, axis=axis)]).T,
+                                    columns=columns)
     df = process_array(*data, func=func, subset=subset, keys=keys, **kwargs)
     return df
+
 
 def triggers(arr, dt, min_level, min_width, subset=None, **kwargs):
     """ Search for trigger events in array data using a threshold condition.
@@ -148,14 +159,14 @@ def triggers(arr, dt, min_level, min_width, subset=None, **kwargs):
             dt              float64
             min_level       float64
             min_width       float64
-        
+
         kwargs:
             subset=None     slice the array data
             bksub=50        number of points to use for background subtraction
             invert=True     invert data (events are negative)
-            transpose=False search along rows (transpose=False) or columns (transpose=True)
+            transpose=False search along rows (False) or columns (True)
             name="event"    index name
-        
+
         return:
             pd.DataFrame(["time", "width", "amplitude"])
     """

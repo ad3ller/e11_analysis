@@ -7,11 +7,11 @@ Created on Fri Jan 12 16:01:32 2018
 import os
 import glob
 from numbers import Number
-from collections.abc import Iterable
 import numpy as np
 import pandas as pd
 
-def sub_dire(dire, name, file_name=None):
+
+def sub_dire(dire, name, fil=None):
     """ Build path to a sub-directory of dire.  Create if does not exist."""
     if dire is None:
         raise Exception("Cannot build sub_dire because dire is None.")
@@ -19,9 +19,10 @@ def sub_dire(dire, name, file_name=None):
         path = os.path.join(dire, name)
         if not os.path.exists(path):
             os.makedirs(path)
-        if file_name is not None:
-            path = os.path.join(path, file_name)
+        if fil is not None:
+            path = os.path.join(path, fil)
         return path
+
 
 def ls(dire, regex="*", full_output=True, report=False):
     """ List the contents of dire.
@@ -43,6 +44,7 @@ def ls(dire, regex="*", full_output=True, report=False):
     fnames = [os.path.split(f)[1] for f in fils]
     return fnames
 
+
 def t_index(time, dt=1.0, t0=0.0):
     """ convert time to index using dt [and t0].
     """
@@ -56,6 +58,7 @@ def t_index(time, dt=1.0, t0=0.0):
         return np.array([int(round((t - t0) / dt)) for t in time])
     else:
         raise TypeError("time must be a number or list of numbers.")
+
 
 def utf8_attrs(info):
     """ convert bytes to utf8
@@ -71,11 +74,13 @@ def utf8_attrs(info):
             info[key] = val.decode("utf8")
     return info
 
+
 def add_level(df, label="", position="first"):
-    """ 
+    """
         Add a level to pd.MultiIndex columns.
 
-        This can be useful when joining DataFrames with / without multiindex columns.
+        This can be useful when joining DataFrames with / without multiindex
+        columns.
 
         >>> st = statistics(a_df)                # MultiIndex DataFrame
         >>> add_level(h5.var, "VAR").join(st)
@@ -118,26 +123,29 @@ def add_level(df, label="", position="first"):
         df2.columns = pd.MultiIndex.from_tuples(new_columns)
     return df2
 
+
 def rescale(arr, yscale, yoffset):
     """ rescale = arr * yscale + yoffset
     """
     return arr * yscale + yoffset
 
+
 def nth_dflip(arr, n=0):
     """ Index of the nth occurance of a flip in the gradient of arr.
-    
-        e.g., use to find loops in variables for linear scans 
-    
+
+        e.g., use to find loops in variables for linear scans
+
         args:
             arr          np.array(dims=1)
             n=0          int
-          
+
         return:
             int
     """
     sign = np.sign(np.diff(arr))
-    d0 = sign[np.nonzero(sign)[0][0]] # first non-zero diff
+    d0 = sign[np.nonzero(sign)[0][0]]  # first non-zero diff
     try:
-        return np.argwhere(sign == -d0).flatten()[n]
-    except:
-        return -1
+        result = np.argwhere(sign == -d0).flatten()[n]
+    except IndexError:
+        result = -1
+    return result
