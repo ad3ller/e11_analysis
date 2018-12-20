@@ -50,7 +50,7 @@ def threshold_trigger(arr, dt, min_level, min_width, bksub=50, invert=True,
         rngs = np.where(np.diff(threshold))[0].reshape(-1, 2)
         # exclude pulses narrower than min_width
         pulse = rngs[rngs[:, 1] - rngs[:, 0] > min_x]
-        if pulse:
+        if len(pulse) > 0:
             # output
             time = pulse[:, 0] * dt
             width = (pulse[:, 1] - pulse[:, 0]) * dt
