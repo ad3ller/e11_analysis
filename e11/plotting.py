@@ -59,7 +59,7 @@ def floating_xlabels(ax, xticks, labels, y_pos, **kwargs):
     return ax
 
 
-def im_subplots(size=0.7, pad=0.15, xaxis="off", yaxis="off", **kwargs):
+def subplots_xy(size=0.7, pad=0.15, xaxis="off", yaxis="off", **kwargs):
     """ Create a figure with three subplots, ax, axx, and, axy.
         
         The subplots axx and axy are positioned at the top and 
@@ -87,7 +87,7 @@ def im_subplots(size=0.7, pad=0.15, xaxis="off", yaxis="off", **kwargs):
     return fig, (ax, axx, axy)
 
 
-def im_slice(axes, data, x, y, imshow=True, line_kw=None, step_kw=None, **kwargs):
+def imshow_xy(axes, data, x, y, imshow=True, line_kw=None, step_kw=None, **kwargs):
     """ Show data as an image in ax, with slices at x and y in
     the subplots axy and axx.
 
