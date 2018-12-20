@@ -307,7 +307,7 @@ class H5Scan(object):
     def pprint(self):
         """ print author and description info """
         print(f"file:     \t {self.fil}",
-              f"size:     \t {self.size * 1e-6:.2} MB",
+              f"size:     \t {self.size * 1e-6:.2f} MB",
               f"datasets: \t {self._datasets}", sep="\n")
 
 
@@ -375,7 +375,6 @@ class H5Data(object):
         with h5py.File(self.fil, "r") as dfil:
             self._attrs = utf8_attrs(dict(dfil.attrs))
             self.groups = list(dict(dfil.items()).keys())
-            self.num_groups = len(self.groups)
             self.squids = np.sort(np.array(self.groups).astype(int))
 
     @property
@@ -389,7 +388,7 @@ class H5Data(object):
         return self._attrs["Description"]
 
     def update_log(self, cache=True, **kwargs):
-        """ Assemble group attributes into a pandas.DataFrame, self.log.
+        """ Assemble group attributes into self.log (pandas.DataFrame).
             
             args:
                 cache=True     cache result to [cache_dire]/log.pkl
@@ -400,7 +399,11 @@ class H5Data(object):
         """
         tqdm_kw = kwargs.get("tqdm_kw", {})
         with h5py.File(self.fil, "r") as dfil:
-            # read attributes from each squid
+            # refresh file info
+            self._attrs = utf8_attrs(dict(dfil.attrs))
+            self.groups = list(dict(dfil.items()).keys())
+            self.squids = np.sort(np.array(self.groups).astype(int))
+            # read attributes from each group
             result = dict()
             for group in tqdm(self.groups, **tqdm_kw):
                 # read info
@@ -419,15 +422,14 @@ class H5Data(object):
                 result["ACQUIRE"] = result["END"] - result["START"]
             if "DATETIME" in result:
                 result.DATETIME = pd.to_datetime(result.DATETIME)
-                if "ELAPSED" not in result:
-                    result["ELAPSED"] = (result.DATETIME - result.DATETIME.min())
+                result["ELAPSED"] = (result.DATETIME - result.DATETIME.min())
         # save to pickle file
         if cache and self.log_file is not None:
             result.to_pickle(self.log_file)
         # result
         self._log = result
 
-    def load_log(self):
+    def load_log(self, check=True):
         """ Load [cache_dire]/log.pkl """
         if self.log_file is None:
             raise TypeError("log_file is None")
@@ -436,6 +438,9 @@ class H5Data(object):
         else:
             # read cached file
             log_df = pd.read_pickle(self.log_file)
+            if check and len(log_df.index) != len(self.groups):
+                warnings.warn("len(log_df.index) != len(self.groups). "
+                              "Try update_log().")
             self._log = log_df
         return log_df
 
@@ -520,7 +525,7 @@ class H5Data(object):
                     attributes["squid"] = squid
                     return attributes
                 else:
-                    raise LookupError(f"{dataset} not found for squid={group}.")
+                    raise LookupError(f"{dataset} not found for squid={group}")
 
     def datasets(self, squid=1):
         """ Get the names of the datasets in group=squid
@@ -533,7 +538,7 @@ class H5Data(object):
         """
         group = str(squid)
         if group not in self.groups:
-            raise LookupError(f"squid={group} not found.")
+            raise LookupError(f"squid={group} not found")
         else:
             with h5py.File(self.fil, "r") as dfil:
                 data = dfil["."]
@@ -583,7 +588,7 @@ class H5Data(object):
                         dat = dat.astype(int)
                     arr.append(dat)
                 elif not ignore_missing:
-                    warnings.warn(f"missing dataset(s) for squid: {group}.")
+                    warnings.warn(f"missing dataset(s) for squid={group}")
         if axis is not None:
             arr = np.concatenate(arr, axis=axis)
         return arr
@@ -711,9 +716,9 @@ class H5Data(object):
 
     def pprint(self):
         """ print author and description info """
-        desc = self.desc.replace("\n", "\n\t\t ")
-        print(f"file: \t\t {self.fil}",
-              f"size: \t\t {self.size * 1e-6:.2} MB",
-              f"num groups: \t {self.num_groups}",
-              f"author: \t {self.author}",
+        desc = self.desc.replace("\n", "\n             \t ")
+        print(f"file:        \t {self.fil}",
+              f"size:        \t {self.size * 1e-6:.2f} MB",
+              f"num groups:  \t {len(self.groups)}",
+              f"author:      \t {self.author}",
               f"description: \t {desc}", sep="\n")
