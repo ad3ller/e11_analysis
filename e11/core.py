@@ -90,7 +90,6 @@ def cashew(method):
         cache = kwargs.pop("cache", None)
         cache_update = kwargs.pop("cache_update", False)
         cache_info = kwargs.pop("cache_info", False)
-        kwargs.pop("tqdm_kw", None)
         # TODO check info option
         if cache is None:
             cache = False
