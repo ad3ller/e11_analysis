@@ -41,8 +41,8 @@ def statistics(df, groupby="squid", **kwargs):
     elif isinstance(df, pd.DataFrame):
         df_columns = df.columns.values
     else:
-        raise Exception("df must be a pandas.Series or pandas.DataFrame.")
-    # prevent exeption being raised if list of length==1 is passed to groupby
+        raise TypeError("df must be a pandas.Series or pandas.DataFrame.")
+    # prevent exception caused by list of length==1 being passed to groupby
     if isinstance(groupby, str):
         df_columns = [c for c in df_columns if c != groupby]
     elif len(groupby) == 1:
@@ -68,7 +68,7 @@ def statistics(df, groupby="squid", **kwargs):
         stat_columns = ["count", "mean", "std", "err", "max", "min", "range",
                         "median"]
     else:
-        raise Exception(f"kwarg mode={mode} is not valid.")
+        raise ValueError(f"mode={mode} is not valid")
     # MultiIndex column names
     # remove groupby elements from output columns
     new_columns = []
