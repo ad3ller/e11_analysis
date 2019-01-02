@@ -77,20 +77,20 @@ def cashew(method):
             h5             instance of H5Data()
 
         kwargs:
-            cache=None     If cache is not None, save result to h5.cache_dire/
-                           [cache].[method].pkl, or read from the file if it
-                           already exists.
-            update=False   If update then overwrite cached file.
-            info=False     Information about result. Use to inspect the
-                           settings of the cache file.
+            cache=None              If cache is not None, save result to
+                                    h5.cache_dire/[cache].[method.__name__].pkl, or read from
+                                    the file if it already exists.
+            cache_update=False      Update cached file.
+            cache_info=False        Get information about cache.
     """
     @wraps(method)
     def wrapper(h5, *args, **kwargs):
         """ function wrapper
         """
-        cache = kwargs.get("cache", None)
-        update = kwargs.get("update", False)
-        get_info = kwargs.get("info", False)
+        cache = kwargs.pop("cache", None)
+        cache_update = kwargs.pop("cache_update", False)
+        cache_info = kwargs.pop("cache_info", False)
+        kwargs.pop("tqdm_kw", None)
         # TODO check info option
         if cache is None:
             cache = False
@@ -100,6 +100,7 @@ def cashew(method):
         arg_names = arg_names[1:-1]  # drop self and kwargs
         arg_values = [a.__name__ if hasattr(a, "__name__") else a for a in args]
         info = dict(zip(arg_names, arg_values))
+        info = {**info, **kwargs}
         info["method"] = method.__name__
         # config cache
         if cache:
@@ -114,7 +115,7 @@ def cashew(method):
                 raise TypeError("kwarg cache dtype must be str or True")
             cache_file = os.path.join(h5.cache_dire, fname)
         # read cache ...
-        if not update and cache and os.path.isfile(cache_file):
+        if not cache_update and cache and os.path.isfile(cache_file):
             result, info = pd.read_pickle(cache_file)
             info["cache"] = cache_file
         # ... or apply func ...
@@ -125,9 +126,11 @@ def cashew(method):
             if cache:
                 obj = (result, info)
                 pd.to_pickle(obj, cache_file)
-            info["cache"] = False
+                info["cache"] = cache_file
+            else:
+                info["cache"] = False
         # result
-        if get_info:
+        if cache_info:
             return result, info
         return result
     return wrapper
@@ -234,12 +237,13 @@ class H5Scan(object):
                 cache=None     If cache is not None, save result to
                                h5.cache_dire/[cache].array.pkl, or read from
                                the file if it already exists.
-                update=False   If update then overwrite cached file.
-                info=False     Information about result. Use to check that
-                               settings of the cache match expectation.
+                cache_update=False 
+                               Update cached file.
+                cache_info=False     
+                               Get information about cache.
 
             return:
-                numpy.ndarray
+                numpy.ndarray, [cache_info]
 
         """
         # initialise
@@ -270,15 +274,15 @@ class H5Scan(object):
                                        string, then use label.
                 columns_astype_str=False
                                        Convert column names to str.
-                cache=None     If cache is not None, save result to
-                               h5.cache_dire/[cache].df.pkl, or read from the
-                               file if it already exists.
-                update=False   If update then overwrite cached file.
-                info=False     Information about result. Use to check that
-                               settings of the cache match expectation.
+
+                cache=None              If cache is not None, save result to
+                                        h5.cache_dire/[cache].df.pkl, or read from
+                                        the file if it already exists.
+                cache_update=False      Update cached file.
+                cache_info=False        Get information about cache.
 
             return:
-                pandas.DataFrame
+                pandas.DataFrame, [cache_info]
         """
         label = kwargs.get("label", None)
         columns_astype_str = kwargs.get("columns_astype_str", False)
@@ -554,20 +558,19 @@ class H5Data(object):
                 axis=0      concatenation axis   (int or None [returns list])
 
             kwargs:
-                convert_int=False      Convert integer data types to python int
-                ignore_missing=False   Don't complain if data is not found.
+                convert_int=False       Convert integer data types to python int
+                ignore_missing=False    Don't complain if data is not found.
 
-                cache=None     If cache is not None, save result to
-                               h5.cache_dire/[cache].array.pkl, or read from
-                               the file if it already exists.
-                update=False   If update then overwrite cached file.
-                info=False     Information about result. Use to check that
-                               settings of the cache match expectation.
+                cache=None              If cache is not None, save result to
+                                        h5.cache_dire/[cache].array.pkl, or read from
+                                        the file if it already exists.
+                cache_update=False      Update cached file.
+                cache_info=False        Get information about cache.
 
                 tqdm_kw        dict()
 
             return:
-                numpy.ndarray
+                numpy.ndarray, [cache_info]
 
             notes:
                 To stack images from multiple squids use axis=2.
@@ -605,25 +608,24 @@ class H5Data(object):
                 If columns=None then return all columns in the dataset.
 
             kwargs:
-                label=None             This can be useful for merging datasets.
-                                       If True, add dataset name as an index to
-                                       the columns. Or, if label.dtype is
-                                       string, then use label.
-                ignore_missing=False   Don't complain if data is not found.
+                label=None              This can be useful for merging datasets.
+                                        If True, add dataset name as an index to
+                                        the columns. Or, if label.dtype is
+                                        string, then use label.
+                ignore_missing=False    Don't complain if data is not found.
                 columns_astype_str=False
-                                       Convert column names to str.
+                                        Convert column names to str.
 
-                cache=None     If cache is not None, save result to
-                               h5.cache_dire/[cache].df.pkl, or read from the
-                               file if it already exists.
-                update=False   If update then overwrite cached file.
-                info=False     Information about result. Use to inspect the
-                               settings of the cache file.
+                cache=None              If cache is not None, save result to
+                                        h5.cache_dire/[cache].df.pkl, or read from
+                                        the file if it already exists.
+                cache_update=False      Update cached file.
+                cache_info=False        Get information about cache.
 
                 tqdm_kw        dict()
 
             return:
-                pandas.DataFrame
+                pandas.DataFrame, [cache_info]
         """
         label = kwargs.get("label", None)
         ignore_missing = kwargs.get("ignore_missing", False)
@@ -673,16 +675,14 @@ class H5Data(object):
 
             kwargs:
                 ignore_missing=False    Don't complain if data is not found.
-                cache=None              If cache is not None, save result to
-                                        h5.cache_dire/[cache].apply.pkl, or
-                                        read from the file if it already
-                                        exists.
-                update=False            If update then overwrite cached file.
-                info=False              Information about result. Use to check
-                                        that settings of the cache match
-                                        expectation.
 
                 tqdm_kw                 dict()
+
+                cache=None              If cache is not None, save result to
+                                        h5.cache_dire/[cache].apply.pkl, or read from
+                                        the file if it already exists.
+                cache_update=False      Update cached file.
+                cache_info=False        Get information about cache.
 
             return:
                 func(datasets, **kwargs), [info]
