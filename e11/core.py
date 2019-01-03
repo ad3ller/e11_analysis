@@ -80,19 +80,16 @@ def cashew(method):
             cache=None              If cache is not None, save result to
                                     h5.cache_dire/[cache].[method.__name__].pkl, or read from
                                     the file if it already exists.
-            cache_update=False      Update cached file.
-            cache_info=False        Get information about cache.
+            update_cache=False      Update the cache.
+            get_info=False          Get information about method / cache.
     """
     @wraps(method)
     def wrapper(h5, *args, **kwargs):
         """ function wrapper
         """
         cache = kwargs.pop("cache", None)
-        cache_update = kwargs.pop("cache_update", False)
-        cache_info = kwargs.pop("cache_info", False)
-        # TODO check info option
-        if cache is None:
-            cache = False
+        update_cache = kwargs.pop("update_cache", False)
+        get_info = kwargs.pop("get_info", False)
         # info
         sig = inspect.signature(method)
         arg_names = list(sig.parameters.keys())
@@ -114,7 +111,7 @@ def cashew(method):
                 raise TypeError("kwarg cache dtype must be str or True")
             cache_file = os.path.join(h5.cache_dire, fname)
         # read cache ...
-        if not cache_update and cache and os.path.isfile(cache_file):
+        if not update_cache and cache and os.path.isfile(cache_file):
             result, info = pd.read_pickle(cache_file)
             info["cache"] = cache_file
         # ... or apply func ...
@@ -129,7 +126,7 @@ def cashew(method):
             else:
                 info["cache"] = False
         # result
-        if cache_info:
+        if get_info:
             return result, info
         return result
     return wrapper
@@ -233,13 +230,11 @@ class H5Scan(object):
                 dataset        Name of dataset      (str)
 
             kwargs:
-                cache=None     If cache is not None, save result to
-                               h5.cache_dire/[cache].array.pkl, or read from
-                               the file if it already exists.
-                cache_update=False 
-                               Update cached file.
-                cache_info=False     
-                               Get information about cache.
+                cache=None              If cache is not None, save result to
+                                        h5.cache_dire/[cache].array.pkl, or read from
+                                        the file if it already exists.
+                update_cache=False      Update the cache.
+                get_info=False          Get information about method / cache.
 
             return:
                 numpy.ndarray, [cache_info]
@@ -277,8 +272,8 @@ class H5Scan(object):
                 cache=None              If cache is not None, save result to
                                         h5.cache_dire/[cache].df.pkl, or read from
                                         the file if it already exists.
-                cache_update=False      Update cached file.
-                cache_info=False        Get information about cache.
+                update_cache=False      Update the cache.
+                get_info=False          Get information about method / cache.
 
             return:
                 pandas.DataFrame, [cache_info]
@@ -563,8 +558,8 @@ class H5Data(object):
                 cache=None              If cache is not None, save result to
                                         h5.cache_dire/[cache].array.pkl, or read from
                                         the file if it already exists.
-                cache_update=False      Update cached file.
-                cache_info=False        Get information about cache.
+                update_cache=False      Update the cache.
+                get_info=False          Get information about method / cache.
 
                 tqdm_kw        dict()
 
@@ -618,8 +613,8 @@ class H5Data(object):
                 cache=None              If cache is not None, save result to
                                         h5.cache_dire/[cache].df.pkl, or read from
                                         the file if it already exists.
-                cache_update=False      Update cached file.
-                cache_info=False        Get information about cache.
+                update_cache=False      Update the cache.
+                get_info=False          Get information about method / cache.
 
                 tqdm_kw        dict()
 
@@ -680,8 +675,8 @@ class H5Data(object):
                 cache=None              If cache is not None, save result to
                                         h5.cache_dire/[cache].apply.pkl, or read from
                                         the file if it already exists.
-                cache_update=False      Update cached file.
-                cache_info=False        Get information about cache.
+                update_cache=False      Update the cache.
+                get_info=False          Get information about method / cache.
 
             return:
                 func(datasets, **kwargs), [info]

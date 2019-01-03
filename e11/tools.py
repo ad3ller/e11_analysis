@@ -11,16 +11,16 @@ import numpy as np
 import pandas as pd
 
 
-def sub_dire(dire, name, fil=None):
-    """ Build path to a sub-directory of dire.  Create if does not exist."""
-    if dire is None:
-        raise Exception("Cannot build sub_dire because dire is None.")
+def sub_dire(base, dire, fname=None):
+    """ Build path to a base/dire.  Create if does not exist."""
+    if base is None:
+        raise ValueError(f"base={base} is not valid")
     else:
-        path = os.path.join(dire, name)
+        path = os.path.join(base, dire)
         if not os.path.exists(path):
             os.makedirs(path)
-        if fil is not None:
-            path = os.path.join(path, fil)
+        if fname is not None:
+            path = os.path.join(path, fname)
         return path
 
 
