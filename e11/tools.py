@@ -123,7 +123,7 @@ def add_level(df, label="", position="first"):
     return df2
 
 
-def from_dict_of_tuples(data, names=("mean", "err")):
+def from_dict_of_tuples(data, names=("value", "error")):
     """ Construct a DataFrame with MultiIndex columns 
     from a dict of tuples.
     
