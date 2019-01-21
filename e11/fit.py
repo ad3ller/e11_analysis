@@ -8,11 +8,97 @@ Created on Fri Dec 28 20:06:21 2018
 
 """
 import numpy as np
-from scipy.optimize import leastsq
+from scipy.optimize import curve_fit, leastsq
+from scipy.special import wofz
+
+""" 
+    1D data
+    -------
+"""
+
+class _1D(object):
+    """ Fit a 1D function to trace data
+    """
+    def __init__(self, xdata, ydata, sigma=None):
+        self.xdata = xdata
+        self.ydata = ydata
+        self.sigma = sigma
+        self.popt = None
+        self.pcov = None
+        self.perr = None
+
+    def fit(self, p0=None, uncertainty=True, **kwargs):
+        """ least-squares fit of func() to data """
+        if p0 is None:
+            p0 = self.approx()
+        self.popt, self.pcov = curve_fit(self.func,
+                                         self.xdata,
+                                         self.ydata,
+                                         p0=p0,
+                                         sigma=self.sigma,
+                                         **kwargs)
+        self.perr = np.sqrt(np.diag(self.pcov))
+        if uncertainty:
+            return self.popt, self.perr
+        else:
+            return self.popt
+        
+    def asdict(self, uncertainty=True):
+        """ get best fit parameters as a dictionary"""
+        if uncertainty:
+            return dict(zip(self.keys(), zip(self.popt, self.perr)))
+        else:
+            return dict(zip(self.keys(), self.popt))
 
 
-class Gauss2D(object):
-    """ Fit a 2D Gaussian to image data
+class Gaussian(_1D):
+    """ Fit a 1D Gaussian to trace data
+    """
+    def keys(self):
+        return ["x0", "amp", "sigma", "offset"]
+
+    def func(self, x, x0, amp, sigma, offset):
+        """ 1D Gaussian function with offset"""
+        return amp * np.exp(-0.5 * ((x - x0) / sigma)**2.0) + offset
+
+    def approx(self):
+        """ estimate func pars (assumes positive amplitude)"""
+        # gauss pars
+        x0 = self.xdata[np.argmax(self.ydata)]
+        offset = np.min(self.ydata)
+        amp = np.max(self.ydata) - offset
+        dx = np.mean(np.diff(self.xdata))
+        sigma = ((self.ydata - offset) >= 0.5 * amp).sum() * dx
+        return x0, amp, sigma, offset
+
+
+class Lorentzian(_1D):
+    """ Fit a 1D Lorentzian to trace data
+    """
+    def keys(self):
+        return ["x0", "amp", "gamma", "offset"]
+
+    def func(self, x, x0, amp, gamma, offset):
+        """ 1D Lorentzian function """
+        return amp * gamma**2 / ((x - x0)**2 + gamma**2) + offset
+
+    def approx(self):
+        """ estimate func pars (assumes positive amplitude)"""
+        # gauss pars
+        x0 = self.xdata[np.argmax(self.ydata)]
+        offset = np.min(self.ydata)
+        amp = np.max(self.ydata) - offset
+        dx = np.mean(np.diff(self.xdata))
+        gamma = ((self.ydata - offset) >= 0.5 * amp).sum() * dx
+        return x0, amp, gamma, offset
+
+""" 
+    2D data
+    -------
+"""
+
+class _2D(object):
+    """ Fit to 2D image data
     """
     def __init__(self, *data):
         if len(data) == 3:
@@ -30,6 +116,24 @@ class Gauss2D(object):
         self.dy = np.mean(np.diff(self.Y[0, :]))
         self.popt = None
 
+    def fit(self, p0=None, maxfev=100):
+        """ least-squares fit of func() to data """
+        if p0 is None:
+            p0 = self.approx()
+        popt, success = leastsq(lambda p: np.ravel(self.func(self.X,
+                                                             self.Y,
+                                                             *p)
+                                                   - self.Z),
+                                p0, maxfev=maxfev)
+        if not success:
+            raise Exception("Failed to fit data")
+        self.popt = popt
+        return popt
+
+
+class Gauss2D(_2D):
+    """ Fit a 2D Gaussian to image data
+    """
     def func(self, x, y, x0, y0, amp, width, offset):
         """ 2D Gaussian function with offset"""
         return amp * np.exp(-0.5 *
@@ -50,20 +154,6 @@ class Gauss2D(object):
         y0 = self.Y[i, j]
         return x0, y0, amp, width, offset
 
-    def fit(self, p0=None, maxfev=100):
-        """ least-squares fit of func() to data """
-        if p0 is None:
-            p0 = self.approx()
-        popt, success = leastsq(lambda p: np.ravel(self.func(self.X,
-                                                             self.Y,
-                                                             *p)
-                                                   - self.Z),
-                                p0, maxfev=maxfev)
-        if not success:
-            raise Exception("Failed to fit data")
-        self.popt = popt
-        return popt
-
     def text(self, pars=None):
         """ fit result """
         if pars is None:
@@ -77,25 +167,9 @@ class Gauss2D(object):
                f"offset = {pars[4]:.2f}"
 
 
-class Gauss2DAngle(object):
+class Gauss2DAngle(_2D):
     """ Fit an asymmetric 2D Gaussian to image data
     """
-    def __init__(self, *data):
-        if len(data) == 3:
-            X, Y, Z = data
-            self.X = X
-            self.Y = Y
-            self.Z = Z
-        else:
-            self.Z = data[0]
-            nx, ny = self.Z.shape
-            xvals = np.arange(nx)
-            yvals = np.arange(ny)
-            self.X, self.Y = np.meshgrid(xvals, yvals, indexing="ij")
-        self.dx = np.mean(np.diff(self.X[:, 0]))
-        self.dy = np.mean(np.diff(self.Y[0, :]))
-        self.popt = None
-
     def func(self, x, y, x0, y0, amp, width, epsilon, angle, offset):
         """ Asymmetric 2D Gaussian function with offset and angle """
         w1 = width
@@ -125,20 +199,6 @@ class Gauss2DAngle(object):
         x0 = self.X[i, j]
         y0 = self.Y[i, j]
         return x0, y0, amp, width, epsilon, angle, offset
-
-    def fit(self, p0=None, maxfev=100):
-        """ least-squares fit of func() to data """
-        if p0 is None:
-            p0 = self.approx()
-        popt, success = leastsq(lambda p: np.ravel(self.func(self.X,
-                                                             self.Y,
-                                                             *p)
-                                                   - self.Z),
-                                p0, maxfev=maxfev)
-        if not success:
-            raise Exception("Failed to fit data")
-        self.popt = popt
-        return popt
 
     def text(self, pars=None):
         """ fit result """
