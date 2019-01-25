@@ -29,13 +29,14 @@ class _1D(object):
 
     def fit(self, p0=None, uncertainty=True, **kwargs):
         """ least-squares fit of func() to data """
+        sigma = kwargs.pop("sigma", self.sigma)
         if p0 is None:
             p0 = self.approx()
         self.popt, self.pcov = curve_fit(self.func,
                                          self.xdata,
                                          self.ydata,
                                          p0=p0,
-                                         sigma=self.sigma,
+                                         sigma=sigma,
                                          **kwargs)
         self.perr = np.sqrt(np.diag(self.pcov))
         if uncertainty:
