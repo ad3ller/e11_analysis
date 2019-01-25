@@ -27,6 +27,8 @@ import IPython
 import h5py
 import numpy as np
 import pandas as pd
+from numbers import Number
+from collections.abc import Iterable
 from tqdm import tqdm
 from .tools import sub_dire, utf8_attrs
 
@@ -71,20 +73,37 @@ def run_file(base, rid, ftype="_data.h5", check=True):
 
 
 def cashew(method):
-    """ Decorator to cache method result as a pickle file.
+    """ Decorator to save or load method result to or from a pickle file.
 
-        arg[0]:
-            h5             instance of H5Data()
+        args:
+            <passed to method>
 
         kwargs:
             cache=None              If cache is not None, save result to
-                                    h5.cache_dire/[cache].[method.__name__].pkl, or read from
-                                    the file if it already exists.
-            update_cache=False      Update the cache.
+                                    cache_file, or read from it if it exists.
+            update_cache=False      Overwrite the cache.
             get_info=False          Get information about method / cache.
+
+        notes:
+
+        # file name
+        if cache is an absolute path, matching *.pkl:
+            cache_file = cache
+        elif isinstance(cache, bool):
+            cache_file = dire/[method.__name__].pkl
+        elif isinstance(cache, str):
+            cache_file = dire/cache.[method.__name__].pkl
+        else:
+            cache_file = None 
+
+        # directory
+        if hasattr(args[0], "cache_dire"):
+            cache_dire = args[0].cache_dire
+        else:
+            cache_dire = os.getcwd()
     """
     @wraps(method)
-    def wrapper(h5, *args, **kwargs):
+    def wrapper(*args, **kwargs):
         """ function wrapper
         """
         cache = kwargs.pop("cache", None)
@@ -93,30 +112,50 @@ def cashew(method):
         # info
         sig = inspect.signature(method)
         arg_names = list(sig.parameters.keys())
-        arg_names = arg_names[1:-1]  # drop self and kwargs
-        arg_values = [a.__name__ if hasattr(a, "__name__") else a for a in args]
+        arg_values = []
+        for a in args:
+            if isinstance(a, (str, Number, Iterable)):
+                arg_values.append(a)
+            elif hasattr(a, "__name__"):
+                arg_values.append(a.__name__)
+            else:
+                arg_values.append(a.__class__.__name__)
         info = dict(zip(arg_names, arg_values))
         info = {**info, **kwargs}
         info["method"] = method.__name__
         # config cache
         if cache:
-            if h5.cache_dire is None:
-                raise TypeError("self.cache_dire is None")
-            elif isinstance(cache, bool):
-                # TODO flatten args to default cache name
-                fname = method.__name__ + ".pkl"
-            elif isinstance(cache, str):
-                fname = f"{os.path.splitext(cache)[0]}.{method.__name__}.pkl"
+            # absolute path
+            if os.path.isabs(cache):
+                cache_file = cache
+                cache_dire, fname = os.path.split(cache_file)
+            # relative path
             else:
-                raise TypeError("kwarg cache dtype must be str or True")
-            cache_file = os.path.join(h5.cache_dire, fname)
+                if hasattr(args[0], "cache_dire"):
+                    cache_dire = args[0].cache_dire
+                else:
+                    cache_dire = os.getcwd()
+                # file name
+                if isinstance(cache, bool):
+                    fname = method.__name__ + ".pkl"
+                elif isinstance(cache, str):
+                    fname = f"{os.path.splitext(cache)[0]}.{method.__name__}.pkl"
+                else:
+                    raise TypeError("kwarg cache dtype must be str or True")
+                cache_file = os.path.join(cache_dire, fname)
+            # checks
+            if not os.path.exists(cache_dire):
+                raise OSError(f"{cache_dire} not found")
+            _, ext = os.path.splitext(cache_file)
+            if ext != ".pkl":
+                raise NameError(f"{fname} should have `.pkl` extension")
         # read cache ...
         if not update_cache and cache and os.path.isfile(cache_file):
             result, info = pd.read_pickle(cache_file)
             info["cache"] = cache_file
         # ... or apply func ...
         else:
-            result = method(h5, *args, **kwargs)
+            result = method(*args, **kwargs)
             info["datetime"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             # ... and update cache.
             if cache:
@@ -231,9 +270,8 @@ class H5Scan(object):
 
             kwargs:
                 cache=None              If cache is not None, save result to
-                                        h5.cache_dire/[cache].array.pkl, or read from
-                                        the file if it already exists.
-                update_cache=False      Update the cache.
+                                        cache_file, or read from it if it exists.
+                update_cache=False      Overwrite the cache.
                 get_info=False          Get information about method / cache.
 
             return:
@@ -270,9 +308,8 @@ class H5Scan(object):
                                        Convert column names to str.
 
                 cache=None              If cache is not None, save result to
-                                        h5.cache_dire/[cache].df.pkl, or read from
-                                        the file if it already exists.
-                update_cache=False      Update the cache.
+                                        cache_file, or read from it if it exists.
+                update_cache=False      Overwrite the cache.
                 get_info=False          Get information about method / cache.
 
             return:
@@ -556,9 +593,8 @@ class H5Data(object):
                 ignore_missing=False    Don't complain if data is not found.
 
                 cache=None              If cache is not None, save result to
-                                        h5.cache_dire/[cache].array.pkl, or read from
-                                        the file if it already exists.
-                update_cache=False      Update the cache.
+                                        cache_file, or read from it if it exists.
+                update_cache=False      Overwrite the cache.
                 get_info=False          Get information about method / cache.
 
                 tqdm_kw        dict()
@@ -611,9 +647,8 @@ class H5Data(object):
                                         Convert column names to str.
 
                 cache=None              If cache is not None, save result to
-                                        h5.cache_dire/[cache].df.pkl, or read from
-                                        the file if it already exists.
-                update_cache=False      Update the cache.
+                                        cache_file, or read from it if it exists.
+                update_cache=False      Overwrite the cache.
                 get_info=False          Get information about method / cache.
 
                 tqdm_kw        dict()
@@ -673,9 +708,8 @@ class H5Data(object):
                 tqdm_kw                 dict()
 
                 cache=None              If cache is not None, save result to
-                                        h5.cache_dire/[cache].apply.pkl, or read from
-                                        the file if it already exists.
-                update_cache=False      Update the cache.
+                                        cache_file, or read from it if it exists.
+                update_cache=False      Overwrite the cache.
                 get_info=False          Get information about method / cache.
 
             return:
