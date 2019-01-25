@@ -8,15 +8,15 @@ Created on Fri Dec 28 20:06:21 2018
 
 """
 import numpy as np
+from abc import ABC, abstractmethod
 from scipy.optimize import curve_fit, leastsq
-from scipy.special import wofz
 
 """ 
     1D data
     -------
 """
 
-class _1D(object):
+class _1D(ABC):
     """ Fit a 1D function to trace data
     """
     def __init__(self, xdata, ydata, sigma=None):
@@ -47,15 +47,28 @@ class _1D(object):
     def asdict(self, uncertainty=True):
         """ get best fit parameters as a dictionary"""
         if uncertainty:
-            return dict(zip(self.keys(), zip(self.popt, self.perr)))
+            return dict(zip(self.vars(), zip(self.popt, self.perr)))
         else:
-            return dict(zip(self.keys(), self.popt))
+            return dict(zip(self.vars(), self.popt))
+
+    @abstractmethod
+    def vars(self):
+        pass
+
+    @abstractmethod
+    def func(self, *vars):
+        pass
+
+    @abstractmethod
+    def approx(self):
+        pass
 
 
 class Gaussian(_1D):
     """ Fit a 1D Gaussian to trace data
     """
-    def keys(self):
+    def vars(self):
+        """ func(x, *vars) """
         return ["x0", "amp", "sigma", "offset"]
 
     def func(self, x, x0, amp, sigma, offset):
@@ -76,7 +89,8 @@ class Gaussian(_1D):
 class Lorentzian(_1D):
     """ Fit a 1D Lorentzian to trace data
     """
-    def keys(self):
+    def vars(self):
+        """ func(x, *vars) """
         return ["x0", "amp", "gamma", "offset"]
 
     def func(self, x, x0, amp, gamma, offset):
@@ -98,7 +112,7 @@ class Lorentzian(_1D):
     -------
 """
 
-class _2D(object):
+class _2D(ABC):
     """ Fit to 2D image data
     """
     def __init__(self, *data):
@@ -131,10 +145,26 @@ class _2D(object):
         self.popt = popt
         return popt
 
+    @abstractmethod
+    def vars(self):
+        pass
+
+    @abstractmethod
+    def func(self):
+        pass
+
+    @abstractmethod
+    def approx(self):
+        pass
+
 
 class Gauss2D(_2D):
     """ Fit a 2D Gaussian to image data
     """
+    def vars(self):
+        """ func(x, y, *vars) """
+        return ["x0", "y0", "amp", "width", "offset"]
+
     def func(self, x, y, x0, y0, amp, width, offset):
         """ 2D Gaussian function with offset"""
         return amp * np.exp(-0.5 *
@@ -171,6 +201,10 @@ class Gauss2D(_2D):
 class Gauss2DAngle(_2D):
     """ Fit an asymmetric 2D Gaussian to image data
     """
+    def vars(self):
+        """ func(x, y, *vars) """
+        return ["x0", "y0", "amp", "width", "epsilon", "angle", "offset"]
+
     def func(self, x, y, x0, y0, amp, width, epsilon, angle, offset):
         """ Asymmetric 2D Gaussian function with offset and angle """
         w1 = width
