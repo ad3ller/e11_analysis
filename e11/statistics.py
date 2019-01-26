@@ -12,13 +12,12 @@ import pandas as pd
 
 
 def statistics(data, groupby=None, mode="default"):
-    """ Calculate the mean and standard error for a DataFrame grouped by
-        groupby.
+    """ Calculate statistics for data.
 
-        The output of,
+        example:
         >>> statistics(data, groupby="squid")
         
-        is simular to that for,
+        # which is roughly equivalent to
         >>> data.groupby("squid").describe()
 
         args:
@@ -32,7 +31,7 @@ def statistics(data, groupby=None, mode="default"):
                                         max, min, range, median
 
         return:
-            pd.DataFrame()
+            pandas.DataFrame()
     """
     # check Series or DataFrame
     if isinstance(data, pd.Series):
