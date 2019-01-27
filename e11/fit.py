@@ -47,12 +47,13 @@ class _1D(ABC):
     def asdict(self, uncertainty=True):
         """ get best fit parameters as a dictionary"""
         if uncertainty:
-            return dict(zip(self.vars(), zip(self.popt, self.perr)))
+            return dict(zip(self.variables, zip(self.popt, self.perr)))
         else:
-            return dict(zip(self.vars(), self.popt))
+            return dict(zip(self.variables, self.popt))
 
+    @property
     @abstractmethod
-    def vars(self):
+    def variables(self):
         pass
 
     @abstractmethod
@@ -67,8 +68,8 @@ class _1D(ABC):
 class Gaussian(_1D):
     """ Fit a 1D Gaussian to trace data
     """
-    def vars(self):
-        """ func(x, *vars) """
+    @property
+    def variables(self):
         return ["x0", "amp", "sigma", "offset"]
 
     def func(self, x, x0, amp, sigma, offset):
@@ -89,8 +90,8 @@ class Gaussian(_1D):
 class Lorentzian(_1D):
     """ Fit a 1D Lorentzian to trace data
     """
-    def vars(self):
-        """ func(x, *vars) """
+    @property
+    def variables(self):
         return ["x0", "amp", "gamma", "offset"]
 
     def func(self, x, x0, amp, gamma, offset):
@@ -145,8 +146,9 @@ class _2D(ABC):
         self.popt = popt
         return popt
 
+    @property
     @abstractmethod
-    def vars(self):
+    def variables(self):
         pass
 
     @abstractmethod
@@ -161,8 +163,8 @@ class _2D(ABC):
 class Gauss2D(_2D):
     """ Fit a 2D Gaussian to image data
     """
-    def vars(self):
-        """ func(x, y, *vars) """
+    @property
+    def variables(self):
         return ["x0", "y0", "amp", "width", "offset"]
 
     def func(self, x, y, x0, y0, amp, width, offset):
@@ -201,8 +203,8 @@ class Gauss2D(_2D):
 class Gauss2DAngle(_2D):
     """ Fit an asymmetric 2D Gaussian to image data
     """
-    def vars(self):
-        """ func(x, y, *vars) """
+    @property
+    def variables(self):
         return ["x0", "y0", "amp", "width", "epsilon", "angle", "offset"]
 
     def func(self, x, y, x0, y0, amp, width, epsilon, angle, offset):
