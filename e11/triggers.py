@@ -12,24 +12,24 @@ import pandas as pd
 from .core import MEASUREMENT_ID
 
 
-def threshold_trigger(arr, dt, min_level, min_width, bksub=50, invert=True,
-                      transpose=False, name="event"):
+def threshold(arr, dt, min_level, min_width,
+              bksub=50, invert=True, transpose=False, name="event"):
     """ Search for trigger events in array data using a threshold condition.
 
-        args:
-            arr             np.array() [2D]
-            dt              float64
-            min_level       float64
-            min_width       float64
+    args:
+        arr             np.array() [2D]
+        dt              float64
+        min_level       float64
+        min_width       float64
 
-        kwargs:
-            bksub=50        number of points to use for background subtraction
-            invert=True     invert data (events are negative)
-            transpose=False search along rows (False) or columns (True)
-            name="event"    index name
+    kwargs:
+        bksub=50        number of points to use for background subtraction
+        invert=True     invert data (events are negative)
+        transpose=False search along rows (False) or columns (True)
+        name="event"    index name
 
-        return:
-            pd.DataFrame(["time", "width", "amplitude"])
+    return:
+        pd.DataFrame(["time", "width", "amplitude"])
 
     """
     assert len(arr.shape) == 2, "arr must be a 2D numpy array"
