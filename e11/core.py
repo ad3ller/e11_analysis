@@ -126,7 +126,7 @@ def cashew(method):
         # config cache
         if cache:
             # absolute path
-            if os.path.isabs(cache):
+            if isinstance(cache, str) and os.path.isabs(cache):
                 cache_file = cache
                 cache_dire, fname = os.path.split(cache_file)
             # relative path
