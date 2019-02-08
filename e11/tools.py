@@ -45,6 +45,53 @@ def ls(dire, regex="*", full_output=True, report=False):
     return fnames
 
 
+def to_pickle(obj, dire, fname, overwrite=False, **kwargs):
+    """ save `obj` as [dire]/[fname].pkl
+    
+    args:
+        obj             python object to save
+        dire            directory
+        fname           file name
+        overwrite=False  
+
+    kwargs:
+        [passed to pandas.to_pickle()]
+
+    """
+    fname, _ = os.path.splitext(fname)
+    fname += ".pkl"
+    fil = os.path.join(dire, fname)
+    # checks
+    if not os.path.isdir(dire):
+        raise OSError(f"{dire} not found")
+    elif os.path.exists(fil) and not overwrite:
+        raise OSError(f"{fil} already exists.  Use overwrite=True")
+    else:
+        pd.to_pickle(obj, fil, **kwargs)
+
+
+def read_pickle(dire, fname, **kwargs):
+    """ read `obj` from [dire]/[fname].pkl
+    
+    args:
+        obj             python object to save
+        dire            directory
+        fname           file name.
+
+    kwargs:
+        [passed to pandas.read_pickle()]
+
+    """
+    fname, _ = os.path.splitext(fname)
+    fname += ".pkl"
+    fil = os.path.join(dire, fname)
+    # checks
+    if not os.path.exists(fil):
+        raise OSError(f"{fil} not found")
+    else:
+        pd.read_pickle(fil, **kwargs)
+
+
 def t_index(time, dt=1.0, t0=0.0):
     """ Convert time to index using dt [and t0].
     """
@@ -75,18 +122,18 @@ def utf8_attrs(info):
     return info
 
 
-def add_level(df, label="", position="first"):
+def add_level(df, label, position="first"):
     """ Add a level to pd.MultiIndex columns.
 
     This can be useful when joining DataFrames with / without multiindex
     columns.
 
-    >>> st = statistics(a_df)                # MultiIndex DataFrame
+    >>> st = statistics(df, groupby="squid")      # MultiIndex DataFrame
     >>> add_level(h5.var, "VAR").join(st)
 
     args:
         df          object to add index level to    pd.DataFrame()
-        label=""    value(s) of the added level(s)  str() / list(str)
+        label=      value(s) of the added level(s)  str() / list(str)
         position=0
                     position of level to add        "first", "last" or int
 

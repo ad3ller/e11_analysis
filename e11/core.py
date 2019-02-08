@@ -63,12 +63,15 @@ def run_file(base, rid, ftype="_data.h5", check=True):
     dire = os.path.join(base, year, month, day, rid)
     fil = os.path.join(dire, rid + ftype)
     if check:
+        if not os.path.isdir(base):
+            # base directory
+            raise OSError(f"{base} is not a directory")
         if not os.path.isdir(dire):
-            # run ID directory not found
-            raise OSError(f"{dire} not found")
+            # run ID directory
+            raise OSError(f"{dire} is not a directory")
         elif not os.path.isfile(fil):
-            # run ID file not found
-            raise OSError(f"{fil} not found")
+            # run ID file
+            raise OSError(f"{fil} is not a file")
     return fil
 
 
@@ -81,6 +84,7 @@ def cashew(method):
         kwargs:
             cache=None              If cache is not None, save result to
                                     cache_file, or read from it if it exists.
+            cache_dire=None
             update_cache=False      Overwrite the cache.
             get_info=False          Get information about method / cache.
 
@@ -97,16 +101,18 @@ def cashew(method):
             cache_file = None 
 
         # directory
-        if hasattr(args[0], "cache_dire"):
-            cache_dire = args[0].cache_dire
-        else:
-            cache_dire = os.getcwd()
+        if cache_dire is None: 
+            if hasattr(args[0], "cache_dire"):
+                cache_dire = args[0].cache_dire
+            else:
+                cache_dire = os.getcwd()
     """
     @wraps(method)
     def wrapper(*args, **kwargs):
         """ function wrapper
         """
         cache = kwargs.pop("cache", None)
+        cache_dire = kwargs.pop("cache_dire", None)
         update_cache = kwargs.pop("update_cache", False)
         get_info = kwargs.pop("get_info", False)
         # info
@@ -131,10 +137,12 @@ def cashew(method):
                 cache_dire, fname = os.path.split(cache_file)
             # relative path
             else:
-                if hasattr(args[0], "cache_dire"):
-                    cache_dire = args[0].cache_dire
-                else:
-                    cache_dire = os.getcwd()
+                # directory
+                if cache_dire is None:
+                    if hasattr(args[0], "cache_dire"):
+                        cache_dire = args[0].cache_dire
+                    else:
+                        cache_dire = os.getcwd()
                 # file name
                 if isinstance(cache, bool):
                     fname = method.__name__ + ".pkl"

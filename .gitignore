@@ -72,3 +72,8 @@ notebooks/F2/
 
 # Visual Studio Code
 .vscode/
+e11_analysis.code-workspace
+
+# example data cache
+notebooks/example_data/*
+!notebooks/example_data/*.h5
