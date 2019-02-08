@@ -229,7 +229,7 @@ class Gauss2DAngle(_2D):
         width = (0.35 * ((self.Z - offset >= 0.5 * amp).sum()**0.5)
                  * (self.dx + self.dy) / 2.0)
         epsilon = 1.5
-        angle = - 1.0
+        angle = -1.0
         # position
         i, j = np.median(np.argwhere(self.Z - offset >= 0.95 * amp),
                          axis=0).astype(int)
@@ -246,10 +246,10 @@ class Gauss2DAngle(_2D):
                 pars = self.popt
         w1 = pars[3]
         w2 = pars[3] * pars[4]
-        w_av = (w1 + w2) / 2.0
+        w_eff = (w1 * w2)**0.5
         return f"xy = ({pars[0]:.2f}, {pars[1]:.2f}) \n" + \
                f"amplitude = {pars[2]:.2f} \n" + \
-               f"FWHM = {2.35482 * w_av:.2f} \n" + \
+               f"FWHM = {2.35482 * w_eff:.2f} \n" + \
                f"epsilon = {pars[4]:.2f} \n" + \
                f"angle = {pars[5]:.2f} \n" + \
                f"offset = {pars[6]:.2f}"
