@@ -10,6 +10,7 @@ Created on Fri Dec 28 20:06:21 2018
 import numpy as np
 from abc import ABC, abstractmethod
 from scipy.optimize import curve_fit, leastsq
+from scipy.special import erfc
 
 """ 
     1D data
@@ -27,29 +28,50 @@ class _1D(ABC):
         self.pcov = None
         self.perr = None
 
+    def robust_func(self, data, *params):
+        """ errors -> infs """
+        try:
+            result = self.func(data, *params)
+        except:
+            result = np.full_like(data, np.inf)
+        finally:
+            return result
+
     def fit(self, p0=None, uncertainty=True, **kwargs):
         """ least-squares fit of func() to data """
         sigma = kwargs.pop("sigma", self.sigma)
         if p0 is None:
             p0 = self.approx()
-        self.popt, self.pcov = curve_fit(self.func,
+        self.popt, self.pcov = curve_fit(self.robust_func,
                                          self.xdata,
                                          self.ydata,
                                          p0=p0,
                                          sigma=sigma,
                                          **kwargs)
-        self.perr = np.sqrt(np.diag(self.pcov))
         if uncertainty:
+            self.perr = np.sqrt(np.diag(self.pcov))
             return self.popt, self.perr
         else:
             return self.popt
-        
-    def asdict(self, uncertainty=True):
+
+    @property
+    def best_fit(self):
+        """ best fit vals """
+        return self.func(self.xdata, *self.popt)
+
+    @property
+    def residuals(self):
+        """ best fit vals """
+        return self.ydata - self.best_fit
+
+    def asdict(self, names=None, uncertainty=True):
         """ get best fit parameters as a dictionary"""
-        if uncertainty:
-            return dict(zip(self.variables, zip(self.popt, self.perr)))
+        if names is None:
+            names = self.variables
+        if uncertainty and self.perr is not None:
+            return dict(zip(names, zip(self.popt, self.perr)))
         else:
-            return dict(zip(self.variables, self.popt))
+            return dict(zip(names, self.popt))
 
     @property
     @abstractmethod
@@ -74,6 +96,7 @@ class Gaussian(_1D):
 
     def func(self, x, x0, amp, sigma, offset):
         """ 1D Gaussian function with offset"""
+        assert sigma >= 0.0
         return amp * np.exp(-0.5 * ((x - x0) / sigma)**2.0) + offset
 
     def approx(self):
@@ -96,6 +119,7 @@ class Lorentzian(_1D):
 
     def func(self, x, x0, amp, gamma, offset):
         """ 1D Lorentzian function """
+        assert gamma >= 0.0
         return amp * gamma**2 / ((x - x0)**2 + gamma**2) + offset
 
     def approx(self):
@@ -107,6 +131,75 @@ class Lorentzian(_1D):
         dx = np.mean(np.diff(self.xdata))
         gamma = ((self.ydata - offset) >= 0.5 * amp).sum() * dx
         return x0, amp, gamma, offset
+
+
+class EMG(_1D):
+    """ Fit an exponentially modified Gaussian to 1D trace data
+    """
+    @property
+    def variables(self):
+        return ["x0", "amp", "sigma", "tau", "offset"]
+
+    def func(self, x, x0, amp, sigma, tau, offset):
+        """ 1D Gaussian convolved with an exponential decay (tau)"""
+        assert sigma >= 0.0
+        assert tau >= 0.0
+        return amp \
+               * np.exp(0.5 * (2.0 * x0 + sigma**2.0 / tau - 2 * x) / tau) \
+               * erfc((x0 + sigma**2.0 / tau - x) / (2.0**0.5 * sigma)) \
+               + offset
+
+    def approx(self):
+        """ estimate func pars (assumes positive amplitude)"""
+        # gauss pars
+        x0 = self.xdata[np.argmax(self.ydata)]
+        offset = np.min(self.ydata)
+        amp = np.max(self.ydata) - offset
+        dx = np.mean(np.diff(self.xdata))
+        sigma = 0.2 * ((self.ydata - offset) >= 0.5 * amp).sum() * dx
+        tau = 2 * sigma
+        return x0, amp, sigma, tau, offset
+
+
+class DoubleEMG(_1D):
+    """ Fit the sum of two exponentially modified Gaussians to 1D trace data
+    """
+    @property
+    def variables(self):
+        return ["x0", "a0", "s0", "t0", "x1", "a1", "s1", "t1", "offset"]
+
+    def func(self, x, x0, a0, s0, t0, x1, a1, s1, t1, offset):
+        """ The sum of two Gaussians convolved with an exponential decay curve"""
+        assert x0 < x1
+        assert s0 >= 0.0
+        assert s1 >= 0.0
+        assert t0 >= 0.0
+        assert t1 >= 0.0
+        def emg(mu, amp, sigma, tau):
+            return amp \
+                   * np.exp(0.5 * (2.0 * mu + sigma**2.0 / tau - 2.0 * x) / tau) \
+                   * erfc((mu + sigma**2.0 / tau - x) / (2.0**0.5 * sigma))
+        return emg(x0, a0, s0, t0) + emg(x1, a1, s1, t1) + offset
+
+    def approx(self):
+        """ estimate func pars (assumes positive amplitude)"""
+        # gauss pars
+        offset = np.mean(self.ydata[:20])
+        rng = np.max(self.ydata) - offset
+        mask = ((self.ydata - offset) >= 0.3 * rng)
+        mid_point = ((np.max(self.xdata[mask]) - np.min(self.xdata[mask])) / 2
+                     + np.min(self.xdata[mask]))
+        sample0 = mask & (self.xdata < mid_point)
+        sample1 = mask & (self.xdata > mid_point)
+        x0 = np.median(self.xdata[sample0])
+        x1 = np.median(self.xdata[sample1])
+        a0 = np.max(self.ydata[sample0]) - offset
+        a1 = np.max(self.ydata[sample1]) - offset
+        s0 = np.std(self.xdata[sample0])
+        s1 = np.std(self.xdata[sample1])
+        t0 = 0.8 * s0
+        t1 = 0.8 * s1
+        return x0, a0, s0, t0, x1, a1, s1, t1, offset
 
 """ 
     2D data
@@ -145,6 +238,16 @@ class _2D(ABC):
             raise Exception("Failed to fit data")
         self.popt = popt
         return popt
+
+    @property
+    def best_fit(self):
+        """ best fit vals """
+        return self.func(self.X, self.Y, *self.popt)
+
+    @property
+    def residuals(self):
+        """ best fit vals """
+        return self.Z - self.best_fit
 
     @property
     @abstractmethod
