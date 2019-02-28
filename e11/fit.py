@@ -101,7 +101,6 @@ class Gaussian(_1D):
 
     def approx(self):
         """ estimate func pars (assumes positive amplitude)"""
-        # gauss pars
         x0 = self.xdata[np.argmax(self.ydata)]
         offset = np.min(self.ydata)
         amp = np.max(self.ydata) - offset
@@ -124,7 +123,6 @@ class Lorentzian(_1D):
 
     def approx(self):
         """ estimate func pars (assumes positive amplitude)"""
-        # gauss pars
         x0 = self.xdata[np.argmax(self.ydata)]
         offset = np.min(self.ydata)
         amp = np.max(self.ydata) - offset
@@ -151,7 +149,6 @@ class EMG(_1D):
 
     def approx(self):
         """ estimate func pars (assumes positive amplitude)"""
-        # gauss pars
         x0 = self.xdata[np.argmax(self.ydata)]
         offset = np.min(self.ydata)
         amp = np.max(self.ydata) - offset
@@ -183,7 +180,6 @@ class DoubleEMG(_1D):
 
     def approx(self):
         """ estimate func pars (assumes positive amplitude)"""
-        # gauss pars
         offset = np.mean(self.ydata[:20])
         rng = np.max(self.ydata) - offset
         mask = ((self.ydata - offset) >= 0.3 * rng)
