@@ -14,7 +14,7 @@ import pandas as pd
 def statistics(data, groupby=None, mode="default"):
     """ Calculate statistics for data.
 
-        example:
+        # example:
         >>> statistics(data, groupby="squid")
         
         # which is roughly equivalent to
@@ -39,7 +39,7 @@ def statistics(data, groupby=None, mode="default"):
     elif isinstance(data, pd.DataFrame):
         df_columns = data.columns.values
     else:
-        raise TypeError("data must be a pandas.Series or pandas.DataFrame.")
+        raise TypeError("data must be a pandas.Series or pandas.DataFrame")
     # no groups
     if groupby is None:
         gr = data
