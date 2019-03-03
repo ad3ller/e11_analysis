@@ -211,14 +211,16 @@ class _2D(ABC):
             self.X = X
             self.Y = Y
             self.Z = Z
+            self.xvals = X[0, :]
+            self.yvals = Y[:, 0]
         else:
             self.Z = data[0]
-            nx, ny = self.Z.shape
-            xvals = np.arange(nx)
-            yvals = np.arange(ny)
-            self.X, self.Y = np.meshgrid(xvals, yvals, indexing="ij")
-        self.dx = np.mean(np.diff(self.X[:, 0]))
-        self.dy = np.mean(np.diff(self.Y[0, :]))
+            ny, nx = self.Z.shape
+            self.xvals = np.arange(nx)
+            self.yvals = np.arange(ny)
+            self.X, self.Y = np.meshgrid(self.xvals, self.yvals)
+        self.dx = np.mean(np.diff(self.xvals))
+        self.dy = np.mean(np.diff(self.yvals))
         self.popt = None
 
     def fit(self, p0=None, maxfev=100):
