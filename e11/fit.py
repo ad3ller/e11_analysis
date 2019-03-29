@@ -7,6 +7,7 @@ Created on Fri Dec 28 20:06:21 2018
     fitting tools
 
 """
+from  inspect import signature
 import numpy as np
 from abc import ABC, abstractmethod
 from scipy.optimize import curve_fit, leastsq
@@ -21,12 +22,15 @@ class _1D(ABC):
     """ Fit a 1D function to trace data
     """
     def __init__(self, xdata, ydata, sigma=None):
-        self.xdata = xdata
-        self.ydata = ydata
+        self.xdata = np.array(xdata)
+        self.ydata = np.array(ydata)
         self.sigma = sigma
         self.popt = None
         self.pcov = None
         self.perr = None
+        # func
+        self.sig = signature(self.func)
+        self.variables = tuple(self.sig.parameters.keys())[1:]
 
     def robust_func(self, data, *params):
         """ errors -> infs """
@@ -73,11 +77,6 @@ class _1D(ABC):
         else:
             return dict(zip(names, self.popt))
 
-    @property
-    @abstractmethod
-    def variables(self):
-        pass
-
     @abstractmethod
     def func(self, *vars):
         pass
@@ -90,17 +89,13 @@ class _1D(ABC):
 class Gaussian(_1D):
     """ Fit a 1D Gaussian to trace data
     """
-    @property
-    def variables(self):
-        return ["x0", "amp", "sigma", "offset"]
-
     def func(self, x, x0, amp, sigma, offset):
         """ 1D Gaussian function with offset"""
         assert sigma >= 0.0
         return amp * np.exp(-0.5 * ((x - x0) / sigma)**2.0) + offset
 
     def approx(self):
-        """ estimate func pars (assumes positive amplitude)"""
+        """ estimate func pars (assumes positive amplitude) """
         x0 = self.xdata[np.argmax(self.ydata)]
         offset = np.min(self.ydata)
         amp = np.max(self.ydata) - offset
@@ -112,10 +107,6 @@ class Gaussian(_1D):
 class Lorentzian(_1D):
     """ Fit a 1D Lorentzian to trace data
     """
-    @property
-    def variables(self):
-        return ["x0", "amp", "gamma", "offset"]
-
     def func(self, x, x0, amp, gamma, offset):
         """ 1D Lorentzian function """
         assert gamma >= 0.0
@@ -126,7 +117,7 @@ class Lorentzian(_1D):
         x0 = self.xdata[np.argmax(self.ydata)]
         offset = np.min(self.ydata)
         amp = np.max(self.ydata) - offset
-        dx = np.mean(np.diff(self.xdata))
+        dx = abs(np.mean(np.diff(self.xdata)))
         gamma = ((self.ydata - offset) >= 0.5 * amp).sum() * dx
         return x0, amp, gamma, offset
 
@@ -134,10 +125,6 @@ class Lorentzian(_1D):
 class EMG(_1D):
     """ Fit an exponentially modified Gaussian to 1D trace data
     """
-    @property
-    def variables(self):
-        return ["x0", "amp", "sigma", "tau", "offset"]
-
     def func(self, x, x0, amp, sigma, tau, offset):
         """ 1D Gaussian convolved with an exponential decay (tau)"""
         assert sigma >= 0.0
@@ -150,7 +137,7 @@ class EMG(_1D):
     def approx(self):
         """ estimate func pars (assumes positive amplitude)"""
         x0 = self.xdata[np.argmax(self.ydata)]
-        offset = np.min(self.ydata)
+        offset = np.mean(self.ydata[:20])
         amp = np.max(self.ydata) - offset
         dx = np.mean(np.diff(self.xdata))
         sigma = 0.2 * ((self.ydata - offset) >= 0.5 * amp).sum() * dx
@@ -161,10 +148,6 @@ class EMG(_1D):
 class DoubleEMG(_1D):
     """ Fit the sum of two exponentially modified Gaussians to 1D trace data
     """
-    @property
-    def variables(self):
-        return ["x0", "a0", "s0", "t0", "x1", "a1", "s1", "t1", "offset"]
-
     def func(self, x, x0, a0, s0, t0, x1, a1, s1, t1, offset):
         """ The sum of two Gaussians convolved with an exponential decay curve"""
         assert x0 < x1
@@ -197,6 +180,120 @@ class DoubleEMG(_1D):
         t1 = 0.8 * s1
         return x0, a0, s0, t0, x1, a1, s1, t1, offset
 
+
+class Pulse(_1D):
+    """ Fit a trapezoidal pulse to 1D trace data
+    """
+    def func(self, t, t0, width, edge, amp, offset):
+        """ A pulse waveform with finite rise and fall time.      
+
+        variables :
+            t0         pulse on time
+            width      pulse duration
+            edge       rise and fall time
+            offset     data offset
+        """
+        assert edge <= width
+        pw = np.piecewise(t,
+                          [t < t0 - 0.5 * edge,
+                           (t0 - 0.5 * edge <= t) & (t < t0 + 0.5 * edge),
+                           (t0 + 0.5 * edge <= t) & (t < t0 - 0.5 * edge + width),
+                           (t0 - 0.5 * edge + width <= t) & (t < t0 + 0.5 * edge + width), 
+                           (t0 + 0.5 * edge + width <= t)],
+                          [0,
+                           lambda t: (t - t0 + 0.5 * edge) / edge,
+                           1,
+                           lambda t: 1 - (t - t0 + 0.5*edge - width) / edge,
+                           0])
+        return pw * amp + offset 
+    
+    def approx(self):
+        """ estimate func pars (positive or negative amplitudes)"""
+        offset = np.mean(self.ydata[:3])
+        rng_min = abs(np.min(self.ydata) - offset)
+        rng_max = abs(np.max(self.ydata) - offset)
+        if rng_min > rng_max:
+            # negative
+            amp = -rng_min
+            mid_point = np.argmin(self.ydata)
+        else:
+            # positive
+            amp = rng_max
+            mid_point = np.argmax(self.ydata)
+        t0 = self.xdata[np.argmin(abs(self.ydata[:mid_point] - offset - 0.5 * amp))]
+        t1 = self.xdata[mid_point:][np.argmin(abs(self.ydata[mid_point:] - offset - 0.5 * amp))]
+        width = t1 - t0
+        edge = 0.1 * width
+        return t0, width, edge, amp, offset
+
+
+class Charge(_1D):
+    """ Fit a capactivie charging curve to 1D trace data
+    """
+    def func(self, t, t0, tau, amp, offset):
+        """ Capactivie charging curve
+            
+            t < t0 :
+                offset
+            t > t0 :
+                amp * (1 - exp(-(t - t0) / tau) + offset
+
+        """
+        return offset + amp * ((1 - np.exp(- (t - t0) / tau))
+                               * np.heaviside(t - t0, 0.5))
+
+    def approx(self):
+        """ estimate func pars (positive or negative amplitudes)"""
+        offset = np.mean(self.ydata[:3])
+        rng_min = abs(np.min(self.ydata) - offset)
+        rng_max = abs(np.max(self.ydata) - offset)
+        if rng_min > rng_max:
+            amp = -rng_min
+        else:
+            amp = rng_max
+        t0 = self.xdata[np.argmin(abs(self.ydata - offset - 0.05 * amp))]
+        tau = 1.2 * (self.xdata[np.argmin(abs(self.ydata - offset - 0.5 * amp))] - t0)
+        return t0, tau, amp, offset
+
+
+class ChargeDecay(_1D):
+    """ Fit a capactivie charge-decay curve to 1D trace data
+    """
+    def func(self, t, t0, width, tau, amp, offset):
+        """ Capactivie charging and decay curve
+        
+            t < t0 :
+                offset
+            t0 < t < t0 + width :
+                amp * (1 - exp(-(t - t0) / tau) + offset
+            t > t0 + width :
+                amp * exp(-(t - t0 - width) / tau) + offset
+        
+        """
+        return offset + amp * ((1 - np.exp(- (t - t0) / tau))
+                               * np.heaviside(t - t0, 0.5)
+                               - (1 - np.exp(-(t - t0 - width) / tau))
+                               * np.heaviside(t - t0 - width, 0.5))
+
+    def approx(self):
+        """ estimate func pars (positive or negative amplitudes)"""
+        offset = np.mean(self.ydata[:3])
+        rng_min = abs(np.min(self.ydata) - offset)
+        rng_max = abs(np.max(self.ydata) - offset)
+        if rng_min > rng_max:
+            # negative
+            amp = -rng_min
+            mid_point = np.argmin(self.ydata)
+        else:
+            # positive
+            amp = rng_max
+            mid_point = np.argmax(self.ydata)
+        t0 = self.xdata[np.argmin(abs(self.ydata[:mid_point] - offset - 0.05 * amp))]
+        tau = 1.2 * (self.xdata[np.argmin(abs(self.ydata[:mid_point] - offset - 0.5 * amp))] - t0)
+        width = 1.5 * (self.xdata[mid_point] - t0 - tau)
+        return t0, width, tau, amp, offset
+
+
 """ 
     2D data
     -------
@@ -222,6 +319,8 @@ class _2D(ABC):
         self.dx = np.mean(np.diff(self.xvals))
         self.dy = np.mean(np.diff(self.yvals))
         self.popt = None
+        self.sig = signature(self.func)
+        self.variables = list(self.sig.parameters.keys())[2:]
 
     def fit(self, p0=None, maxfev=100):
         """ least-squares fit of func() to data """
@@ -247,11 +346,6 @@ class _2D(ABC):
         """ best fit vals """
         return self.Z - self.best_fit
 
-    @property
-    @abstractmethod
-    def variables(self):
-        pass
-
     @abstractmethod
     def func(self):
         pass
@@ -264,10 +358,6 @@ class _2D(ABC):
 class Gauss2D(_2D):
     """ Fit a 2D Gaussian to image data
     """
-    @property
-    def variables(self):
-        return ["x0", "y0", "amp", "width", "offset"]
-
     def func(self, x, y, x0, y0, amp, width, offset):
         """ 2D Gaussian function with offset"""
         return amp * np.exp(-0.5 *
@@ -304,10 +394,6 @@ class Gauss2D(_2D):
 class Gauss2DAngle(_2D):
     """ Fit an asymmetric 2D Gaussian to image data
     """
-    @property
-    def variables(self):
-        return ["x0", "y0", "amp", "width", "epsilon", "angle", "offset"]
-
     def func(self, x, y, x0, y0, amp, width, epsilon, angle, offset):
         """ Asymmetric 2D Gaussian function with offset and angle """
         w1 = width
