@@ -24,10 +24,13 @@ class _1D(ABC):
     def __init__(self, xdata, ydata, sigma=None):
         self.xdata = np.array(xdata)
         self.ydata = np.array(ydata)
-        self.sigma = sigma
+        self.sigma = np.array(sigma) if sigma is not None else sigma
         self.popt = None
         self.pcov = None
         self.perr = None
+        # step size
+        if xdata is not None:
+            self.dx = np.mean(np.diff(self.xdata))
         # func
         self.sig = signature(self.func)
         self.variables = tuple(self.sig.parameters.keys())[1:]
@@ -71,7 +74,7 @@ class _1D(ABC):
     def asdict(self, names=None, uncertainty=True):
         """ get best fit parameters as a dictionary"""
         if names is None:
-            names = self.variables
+            names = list(self.variables)
         if uncertainty and self.perr is not None:
             return dict(zip(names, zip(self.popt, self.perr)))
         else:
@@ -84,6 +87,24 @@ class _1D(ABC):
     @abstractmethod
     def approx(self):
         pass
+
+
+class Linear(_1D):
+    """ Fit a 1D line to trace data
+    """
+    @property
+    def variables(self):
+        return ["m", "c"]
+
+    def func(self, x, m, c):
+        """ 1D line, y = m x + c"""
+        return m * x + c
+
+    def approx(self):
+        """ estimate func pars"""
+        m = (self.ydata[-1] - self.ydata[0]) / (self.xdata[-1] - self.xdata[0])
+        c =  self.ydata[0] -  m * self.xdata[0]
+        return m, c
 
 
 class Gaussian(_1D):
@@ -99,8 +120,7 @@ class Gaussian(_1D):
         x0 = self.xdata[np.argmax(self.ydata)]
         offset = np.min(self.ydata)
         amp = np.max(self.ydata) - offset
-        dx = np.mean(np.diff(self.xdata))
-        sigma = ((self.ydata - offset) >= 0.5 * amp).sum() * dx
+        sigma = ((self.ydata - offset) >= 0.5 * amp).sum() * abs(self.dx)
         return x0, amp, sigma, offset
 
 
@@ -117,8 +137,7 @@ class Lorentzian(_1D):
         x0 = self.xdata[np.argmax(self.ydata)]
         offset = np.min(self.ydata)
         amp = np.max(self.ydata) - offset
-        dx = abs(np.mean(np.diff(self.xdata)))
-        gamma = ((self.ydata - offset) >= 0.5 * amp).sum() * dx
+        gamma = ((self.ydata - offset) >= 0.5 * amp).sum() * abs(self.dx)
         return x0, amp, gamma, offset
 
 
@@ -139,8 +158,7 @@ class EMG(_1D):
         x0 = self.xdata[np.argmax(self.ydata)]
         offset = np.mean(self.ydata[:20])
         amp = np.max(self.ydata) - offset
-        dx = np.mean(np.diff(self.xdata))
-        sigma = 0.2 * ((self.ydata - offset) >= 0.5 * amp).sum() * dx
+        sigma = 0.2 * ((self.ydata - offset) >= 0.5 * amp).sum() * abs(self.dx)
         tau = 2 * sigma
         return x0, amp, sigma, tau, offset
 
@@ -320,7 +338,7 @@ class _2D(ABC):
         self.dy = np.mean(np.diff(self.yvals))
         self.popt = None
         self.sig = signature(self.func)
-        self.variables = list(self.sig.parameters.keys())[2:]
+        self.variables = tuple(self.sig.parameters.keys())[2:]
 
     def fit(self, p0=None, maxfev=100):
         """ least-squares fit of func() to data """
@@ -370,7 +388,7 @@ class Gauss2D(_2D):
         offset = np.mean(self.Z)
         amp = np.max(self.Z) - offset
         width = (0.5 * ((self.Z - offset >= 0.5 * amp).sum()**0.5)
-                 * (self.dx + self.dy) / 2.0)
+                 * (abs(self.dx) + abs(self.dy)) / 2.0)
         # position
         i, j = np.median(np.argwhere(self.Z - offset >= 0.95 * amp),
                          axis=0).astype(int)
@@ -414,7 +432,7 @@ class Gauss2DAngle(_2D):
         offset = np.mean(self.Z)
         amp = np.max(self.Z) - offset
         width = (0.35 * ((self.Z - offset >= 0.5 * amp).sum()**0.5)
-                 * (self.dx + self.dy) / 2.0)
+                 * (abs(self.dx) + abs(self.dy)) / 2.0)
         epsilon = 1.5
         angle = -1.0
         # position
