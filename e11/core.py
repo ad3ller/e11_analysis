@@ -4,6 +4,9 @@ Created on Tue Nov 28 15:27:09 2017
 
 @author: Adam
 
+    run_dire()
+        - function to build path to a run directory
+
     run_file()
         - function to build path to a run file
 
@@ -34,6 +37,37 @@ from .tools import sub_dire, utf8_attrs
 
 # constants
 MEASUREMENT_ID = "measurement"
+
+
+def run_dire(base, rid, dire=None, create=False):
+    """ Build path to directory using run ID.
+
+        base/YYYY/MM/DD/[rid]/[dire]
+
+        The first 8 characters of the run ID are assumed to be of
+        the format YYYYMMDD.  The rest of the run ID can be anything, e.g.,
+
+            YYYYMMDD_hhmmss, or YYYYMMDD_001, or YYYYMMDD_label
+
+        args:
+            base
+            rid
+            dire=None
+            create=False        create run_dire (unless it already exists)
+
+        return:
+            path to directory
+    """
+    year = rid[:4]
+    month = rid[4:6]
+    day = rid[6:8]
+    path = os.path.join(base, year, month, day, rid)
+    dire = "" if dire is None else dire
+    if create:
+        path = sub_dire(path, dire)
+    else:
+        path = os.path.join(path, dire)
+    return path
 
 
 def run_file(base, rid, ftype="_data.h5", check=True):
@@ -190,8 +224,12 @@ class H5Scan(object):
     def __init__(self, fil, out_dire=None, force=False):
         # data file
         self.fil = fil
-        self.dire = os.path.dirname(self.fil)
-        self.size = os.path.getsize(self.fil)
+        if self.fil is not None:
+            check_datafile = True
+            self.dire = os.path.dirname(self.fil)
+        else:
+            check_datafile = False
+            self.dire = None
         # output folder
         if out_dire is not None:
             if os.path.isabs(out_dire):
@@ -223,10 +261,23 @@ class H5Scan(object):
             self.cache_dire = None
         else:
             self.cache_dire = sub_dire(self.out_dire, "cache")
+        # check data file
+        if check_datafile:
+            self.check_datafile()
+        else:
+            self.size = None
+            self.num_datasets = None
+            self._attrs = None
+            self._datasets = None
+    
+    def check_datafile(self):
+        """ check hdf5 data file and get basic attributes
+        """
         # datafile
         if not os.path.isfile(self.fil):
             # file not found
             raise OSError(f"{self.fil} not found")
+        self.size = os.path.getsize(self.fil)
         # open datafile and extract info
         with h5py.File(self.fil, "r") as dfil:
             self._attrs = utf8_attrs(dict(dfil.attrs))
@@ -249,6 +300,8 @@ class H5Scan(object):
         elif dataset not in self._datasets:
             raise LookupError(f"{dataset} dataset not found")
         else:
+            if not os.path.isfile(self.fil):
+                raise OSError(f"{self.fil} not found")
             # get dataset attributes
             with h5py.File(self.fil, "r") as dfil:
                 data = dfil["."]
@@ -264,6 +317,8 @@ class H5Scan(object):
                 list
         """
         if self._datasets is None or update:
+            if not os.path.isfile(self.fil):
+                raise OSError(f"{self.fil} not found")
             with h5py.File(self.fil, "r") as dfil:
                 data = dfil["."]
                 self._datasets = list(data.keys())
@@ -286,7 +341,8 @@ class H5Scan(object):
                 numpy.ndarray, [cache_info]
 
         """
-        # initialise
+        if not os.path.isfile(self.fil):
+            raise OSError(f"{self.fil} not found")
         with h5py.File(self.fil, "r") as dfil:
             if dataset in dfil:
                 arr = np.array(dfil[dataset])
@@ -326,6 +382,8 @@ class H5Scan(object):
         label = kwargs.get("label", None)
         columns_astype_str = kwargs.get("columns_astype_str", False)
         # open file
+        if not os.path.isfile(self.fil):
+            raise OSError(f"{self.fil} not found")
         with h5py.File(self.fil, "r") as dfil:
             if dataset in dfil:
                 if columns is None:
@@ -374,8 +432,12 @@ class H5Data(object):
     def __init__(self, fil, out_dire=None, force=False):
         # data file
         self.fil = fil
-        self.dire = os.path.dirname(self.fil)
-        self.size = os.path.getsize(self.fil)
+        if self.fil is not None:
+            check_datafile = True
+            self.dire = os.path.dirname(self.fil)
+        else:
+            check_datafile = False
+            self.dire = None
         # output folder
         if out_dire is not None:
             if os.path.isabs(out_dire):
@@ -386,6 +448,8 @@ class H5Data(object):
                     raise OSError(f"{out_dire} not found")
             else:
                 # relative path
+                if self.dire is None:
+                    raise ValueError(f"Cannot build relative path from {self.dire}")
                 self.out_dire = os.path.join(self.dire, out_dire)
                 if not os.path.exists(self.out_dire):
                     if force:
@@ -408,12 +472,25 @@ class H5Data(object):
         else:
             self.cache_dire = sub_dire(self.out_dire, "cache")
             self.log_file = os.path.join(self.cache_dire, "log.pkl")
+        # initialise log cache
+        self._log = None
+        # check data file
+        if check_datafile:
+            self.check_datafile()
+        else:
+            self.size = None
+            self._attrs = None
+            self.groups = None
+            self.squids = None
+
+    def check_datafile(self):
+        """ check hdf5 data file and get basic attributes
+        """
         # datafile
         if not os.path.isfile(self.fil):
             # file not found
             raise OSError(f"{self.fil} not found")
-        # initialise log cache
-        self._log = None
+        self.size = os.path.getsize(self.fil)
         # open datafile and extract info
         with h5py.File(self.fil, "r") as dfil:
             self._attrs = utf8_attrs(dict(dfil.attrs))
@@ -441,6 +518,8 @@ class H5Data(object):
         
         """
         tqdm_kw = kwargs.get("tqdm_kw", {})
+        if not os.path.isfile(self.fil):
+            raise OSError(f"{self.fil} not found")
         with h5py.File(self.fil, "r") as dfil:
             # refresh file info
             self._attrs = utf8_attrs(dict(dfil.attrs))
@@ -561,6 +640,8 @@ class H5Data(object):
         elif not isinstance(dataset, str):
             raise TypeError("dataset must be a str.")
         else:
+            if not os.path.isfile(self.fil):
+                raise OSError(f"{self.fil} not found")
             with h5py.File(self.fil, "r") as dfil:
                 data = dfil["."]
                 if dataset in data[group]:
@@ -583,6 +664,8 @@ class H5Data(object):
         if group not in self.groups:
             raise LookupError(f"squid={group} not found")
         else:
+            if not os.path.isfile(self.fil):
+                raise OSError(f"{self.fil} not found")
             with h5py.File(self.fil, "r") as dfil:
                 data = dfil["."]
                 return list(data[group].keys())
@@ -616,6 +699,8 @@ class H5Data(object):
         convert_int = kwargs.get("convert_int", False)
         ignore_missing = kwargs.get("ignore_missing", False)
         tqdm_kw = kwargs.get("tqdm_kw", {})
+        if not os.path.isfile(self.fil):
+            raise OSError(f"{self.fil} not found")
         # initialise
         if isinstance(squids, int):
             squids = [squids]
@@ -668,6 +753,8 @@ class H5Data(object):
         ignore_missing = kwargs.get("ignore_missing", False)
         columns_astype_str = kwargs.get("columns_astype_str", False)
         tqdm_kw = kwargs.get("tqdm_kw", {})
+        if not os.path.isfile(self.fil):
+            raise OSError(f"{self.fil} not found")
         # initialise
         if isinstance(squids, int):
             squids = [squids]
@@ -725,6 +812,8 @@ class H5Data(object):
         """
         ignore_missing = kwargs.get("ignore_missing", False)
         tqdm_kw = kwargs.get("tqdm_kw", {})
+        if not os.path.isfile(self.fil):
+            raise OSError(f"{self.fil} not found")
         # initialise
         if isinstance(squids, int):
             squids = [squids]
