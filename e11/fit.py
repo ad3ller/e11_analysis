@@ -92,10 +92,6 @@ class _1D(ABC):
 class Linear(_1D):
     """ Fit a 1D line to trace data
     """
-    @property
-    def variables(self):
-        return ["m", "c"]
-
     def func(self, x, m, c):
         """ 1D line, y = m x + c"""
         return m * x + c
