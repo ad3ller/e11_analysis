@@ -411,11 +411,11 @@ class DoubleDecay(_1D):
     def approx(self):
         """ estimate func pars (positive amplitude)"""
         amp = np.mean(self.ydata[:3])
-        a0 = 0.6 * amp
-        a1 = 0.4 * amp
+        a0 = 0.7 * amp
+        a1 = 0.3 * amp
         mid_point = int(len(self.xdata) / 2)
-        tau0 = abs(self.xdata[mid_point] - self.xdata[0])
-        tau1 = 2 * tau0
+        tau0 = 0.7 * abs(self.xdata[mid_point] - self.xdata[0])
+        tau1 = 3.0 * tau0
         return a0, tau0, a1, tau1
 
 class TripleDecay(_1D):
@@ -436,11 +436,11 @@ class TripleDecay(_1D):
         amp = np.mean(self.ydata[:3])
         a0 = 0.6 * amp
         a1 = 0.4 * amp
-        a1 = 0.2 * amp
+        a2 = 0.2 * amp
         mid_point = int(len(self.xdata) / 2)
         tau0 = abs(self.xdata[mid_point] - self.xdata[0])
         tau1 = 2 * tau0
-        tau1 = 2 * tau1
+        tau2 = 2 * tau1
         return a0, tau0, a1, tau1, a2, tau2
 
 """ 
