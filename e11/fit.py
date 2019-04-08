@@ -86,7 +86,7 @@ class _1D(ABC):
 
     @abstractmethod
     def approx(self):
-        pass
+        return None
 
 
 class Linear(_1D):
@@ -101,6 +101,23 @@ class Linear(_1D):
         m = (self.ydata[-1] - self.ydata[0]) / (self.xdata[-1] - self.xdata[0])
         c =  self.ydata[0] -  m * self.xdata[0]
         return m, c
+
+
+class Quadratic(_1D):
+    """ Fit a quadratic to 1D data
+    """
+    def func(self, x, x0, amp, offset):
+        """ 1D line, y = amp * (x - x0)^2 + offset"""
+        return amp * (x - x0)**2.0 + offset
+
+    def approx(self):
+        """ estimate func pars """
+        g1 = np.diff(self.ydata) / np.diff(self.xdata)
+        g2 =  np.nanmean(np.diff(self.ydata, n=2) / (np.diff(self.xdata)[:-1])**2.0)
+        amp = g2 / 2.0
+        x0 = np.nanmean(self.xdata[:-1] - g1 / g2)
+        offset = np.nanmean(self.ydata - amp * (self.xdata - x0)**2.0)
+        return x0, amp, offset
 
 
 class Gaussian(_1D):
@@ -196,6 +213,42 @@ class DoubleEMG(_1D):
 
 
 class Pulse(_1D):
+    """ Fit a square pulse to 1D trace data
+    """
+    def func(self, t, t0, width, amp, offset):
+        """ A pulse waveform.      
+
+        variables :
+            t0         pulse on time
+            width      pulse duration
+            offset     data offset
+        """
+        pw = np.piecewise(t,
+                          [t < t0,
+                           (t0 <= t) & (t < t0 + width), 
+                           (t0 + width <= t)],
+                          [0.0, 1.0, 0.0])
+        return pw * amp + offset 
+    
+    def approx(self):
+        """ estimate func pars (positive or negative amplitudes)"""
+        offset = np.mean(self.ydata[:3])
+        rng_min = abs(np.min(self.ydata) - offset)
+        rng_max = abs(np.max(self.ydata) - offset)
+        if rng_min > rng_max:
+            # negative
+            amp = -rng_min
+            mid_point = np.argmin(self.ydata)
+        else:
+            # positive
+            amp = rng_max
+            mid_point = np.argmax(self.ydata)
+        t0 = self.xdata[np.argmin(abs(self.ydata[:mid_point] - offset - 0.5 * amp))]
+        t1 = self.xdata[mid_point:][np.argmin(abs(self.ydata[mid_point:] - offset - 0.5 * amp))]
+        width = t1 - t0
+        return t0, width, amp, offset
+
+class Trapezoid(_1D):
     """ Fit a trapezoidal pulse to 1D trace data
     """
     def func(self, t, t0, width, edge, amp, offset):
@@ -214,11 +267,11 @@ class Pulse(_1D):
                            (t0 + 0.5 * edge <= t) & (t < t0 - 0.5 * edge + width),
                            (t0 - 0.5 * edge + width <= t) & (t < t0 + 0.5 * edge + width), 
                            (t0 + 0.5 * edge + width <= t)],
-                          [0,
+                          [0.0,
                            lambda t: (t - t0 + 0.5 * edge) / edge,
-                           1,
-                           lambda t: 1 - (t - t0 + 0.5*edge - width) / edge,
-                           0])
+                           1.0,
+                           lambda t: 1.0 - (t - t0 + 0.5 * edge - width) / edge,
+                           0.0])
         return pw * amp + offset 
     
     def approx(self):
@@ -240,6 +293,24 @@ class Pulse(_1D):
         edge = 0.1 * width
         return t0, width, edge, amp, offset
 
+
+class BoxLucas(_1D):
+    """ Fit a charging curve to 1D trace data
+    """
+    def func(self, t, tau, amp, offset):
+        """ Charging curve
+            
+            amp * (1 - exp(- t / tau)) + offset
+
+        """
+        return offset + amp * (1 - np.exp(- t / tau))
+
+    def approx(self):
+        """ estimate func pars"""
+        offset = np.mean(self.ydata[:3])
+        amp = np.mean(self.ydata[-3:])
+        tau = self.xdata[np.argmin(abs(self.ydata - offset - 0.63 * amp))]
+        return tau, amp, offset
 
 class Charge(_1D):
     """ Fit a capactivie charging curve to 1D trace data
@@ -307,6 +378,70 @@ class ChargeDecay(_1D):
         width = 1.5 * (self.xdata[mid_point] - t0 - tau)
         return t0, width, tau, amp, offset
 
+
+class Decay(_1D):
+    """ Fit an exponential decay curve to 1D trace data
+    """
+    def func(self, t, amp, tau):
+        """ Decay curve
+               
+        """
+        return amp * np.exp(- (t / tau))
+
+    def approx(self):
+        """ estimate func pars (positive amplitude)"""
+        amp = np.mean(self.ydata[:3])
+        mid_point = int(len(self.xdata) / 2)
+        tau = abs(self.xdata[mid_point] - self.xdata[0])
+        return amp, tau
+
+class DoubleDecay(_1D):
+    """ Fit an exponential decay curve to 1D trace data
+    """
+    def func(self, t, a0, tau0, a1, tau1):
+        """ Double decay curve
+               
+        """
+        assert tau1 > tau0 > 0.0
+        def decay(amp, tau):
+            """ decay curve """
+            return amp * np.exp(- (t / tau))
+        return decay(a0, tau0) + decay(a1, tau1)
+
+    def approx(self):
+        """ estimate func pars (positive amplitude)"""
+        amp = np.mean(self.ydata[:3])
+        a0 = 0.6 * amp
+        a1 = 0.4 * amp
+        mid_point = int(len(self.xdata) / 2)
+        tau0 = abs(self.xdata[mid_point] - self.xdata[0])
+        tau1 = 2 * tau0
+        return a0, tau0, a1, tau1
+
+class TripleDecay(_1D):
+    """ Fit an exponential decay curve to 1D trace data
+    """
+    def func(self, t, a0, tau0, a1, tau1, a2, tau2):
+        """ Triple decay curve
+               
+        """
+        assert tau2 > tau1 > tau0 > 0.0
+        def decay(amp, tau):
+            """ decay curve """
+            return amp * np.exp(- (t / tau))
+        return decay(a0, tau0) + decay(a1, tau1) + decay(a2, tau2)
+
+    def approx(self):
+        """ estimate func pars (positive amplitude)"""
+        amp = np.mean(self.ydata[:3])
+        a0 = 0.6 * amp
+        a1 = 0.4 * amp
+        a1 = 0.2 * amp
+        mid_point = int(len(self.xdata) / 2)
+        tau0 = abs(self.xdata[mid_point] - self.xdata[0])
+        tau1 = 2 * tau0
+        tau1 = 2 * tau1
+        return a0, tau0, a1, tau1, a2, tau2
 
 """ 
     2D data
