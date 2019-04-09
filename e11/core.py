@@ -30,6 +30,7 @@ import IPython
 import h5py
 import numpy as np
 import pandas as pd
+from types import FunctionType
 from numbers import Number
 from collections.abc import Iterable
 from tqdm import tqdm
@@ -675,7 +676,7 @@ class H5Data(object):
         """ Load array data.
 
             args:
-                squids      group(s)             (int / list / array)
+                squids      group(s)             (int / list / array / function)
                 dataset     name of dataset      (str)
                 axis=0      concatenation axis   (int or None [returns list])
 
@@ -695,6 +696,8 @@ class H5Data(object):
 
             notes:
                 To stack images from multiple squids use axis=2.
+
+                If squid is a function it is used as a filter applied to self.squids
         """
         convert_int = kwargs.get("convert_int", False)
         ignore_missing = kwargs.get("ignore_missing", False)
@@ -704,6 +707,8 @@ class H5Data(object):
         # initialise
         if isinstance(squids, int):
             squids = [squids]
+        elif isinstance(squids, FunctionType):
+            squids = list(filter(squids, self.squids))
         arr = []
         with h5py.File(self.fil, "r") as dfil:
             for sq in tqdm(squids, **tqdm_kw):
@@ -724,7 +729,7 @@ class H5Data(object):
         """ Load DataFrame data.
 
             args:
-                squids         group(s)                    (int / list/ array)
+                squids         group(s)                    (int / list/ array/ function)
                 dataset        name of dataset             (str)
                 columns=None   names of columns            (list)
 
@@ -748,6 +753,9 @@ class H5Data(object):
 
             return:
                 pandas.DataFrame, [cache_info]
+        
+            notes:
+                If squid is a function it is used as a filter applied to self.squids
         """
         label = kwargs.get("label", None)
         ignore_missing = kwargs.get("ignore_missing", False)
@@ -758,6 +766,8 @@ class H5Data(object):
         # initialise
         if isinstance(squids, int):
             squids = [squids]
+        elif isinstance(squids, FunctionType):
+            squids = list(filter(squids, self.squids))
         result = dict()
         # open file
         with h5py.File(self.fil, "r") as dfil:
@@ -794,7 +804,7 @@ class H5Data(object):
 
             args:
                 func           function to apply to data   (obj)
-                squids         group(s)                    (int / list/ array)
+                squids         group(s)                    (int / list/ array / function)
                 dataset        name of dataset(s)          (str / list/ array)
 
             kwargs:
@@ -809,6 +819,9 @@ class H5Data(object):
 
             return:
                 func(datasets, **kwargs), [info]
+
+            notes:
+                If squid is a function it is used as a filter applied to self.squids
         """
         ignore_missing = kwargs.get("ignore_missing", False)
         tqdm_kw = kwargs.get("tqdm_kw", {})
@@ -817,6 +830,8 @@ class H5Data(object):
         # initialise
         if isinstance(squids, int):
             squids = [squids]
+        elif isinstance(squids, FunctionType):
+            squids = list(filter(squids, self.squids))
         if isinstance(dataset, str):
             dataset = [dataset]
         if "keys" in kwargs and isinstance(kwargs["keys"], bool) and kwargs["keys"]:
