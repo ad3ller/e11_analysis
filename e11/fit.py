@@ -12,6 +12,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from scipy.optimize import curve_fit, leastsq
 from scipy.special import erfc
+from .tools import classproperty
 
 """ 
     1D data
@@ -31,18 +32,33 @@ class _1D(ABC):
         # step size
         if xdata is not None:
             self.dx = np.mean(np.diff(self.xdata))
-        # func
-        self.sig = signature(self.func)
-        self.variables = tuple(self.sig.parameters.keys())[1:]
 
-    def robust_func(self, data, *params):
+    @classmethod
+    @abstractmethod
+    def func(cls, *vars):
+        pass
+
+    @classmethod
+    def signature(cls, **kwargs):
+        return signature(cls.func, **kwargs)
+
+    @classproperty
+    def variables(cls):
+        return tuple(cls.signature().parameters.keys())[1:]
+
+    @classmethod
+    def robust_func(cls, data, *params):
         """ errors -> infs """
         try:
-            result = self.func(data, *params)
+            result = cls.func(data, *params)
         except:
             result = np.full_like(data, np.inf)
         finally:
             return result
+
+    @abstractmethod
+    def approx(self):
+        return None
 
     def fit(self, p0=None, uncertainty=True, **kwargs):
         """ least-squares fit of func() to data """
@@ -80,19 +96,12 @@ class _1D(ABC):
         else:
             return dict(zip(names, self.popt))
 
-    @abstractmethod
-    def func(self, *vars):
-        pass
-
-    @abstractmethod
-    def approx(self):
-        return None
-
 
 class Linear(_1D):
     """ Fit a 1D line to trace data
     """
-    def func(self, x, m, c):
+    @classmethod
+    def func(cls, x, m, c):
         """ 1D line, y = m x + c"""
         return m * x + c
 
@@ -106,24 +115,33 @@ class Linear(_1D):
 class Quadratic(_1D):
     """ Fit a quadratic to 1D data
     """
-    def func(self, x, x0, amp, offset):
+    @classmethod
+    def func(cls, x, x0, amp, offset):
         """ 1D line, y = amp * (x - x0)^2 + offset"""
         return amp * (x - x0)**2.0 + offset
 
     def approx(self):
         """ estimate func pars """
-        g1 = np.diff(self.ydata) / np.diff(self.xdata)
-        g2 =  np.nanmean(np.diff(self.ydata, n=2) / (np.diff(self.xdata)[:-1])**2.0)
+        num = len(self.xdata)
+        if num > 20:
+            # resample
+            step = len(self.xdata) // 20
+            xs, ys = self.xdata[::step], self.ydata[::step]
+        else:
+            xs, ys = self.xdata, self.ydata
+        g1 = np.diff(ys) / np.diff(xs)
+        g2 =  np.nanmean(np.diff(ys, n=2) / (np.diff(xs)[:-1])**2.0)
         amp = g2 / 2.0
-        x0 = np.nanmean(self.xdata[:-1] - g1 / g2)
-        offset = np.nanmean(self.ydata - amp * (self.xdata - x0)**2.0)
+        x0 = np.nanmean(xs[:-1] - g1 / g2) + (xs[1] - xs[0]) / 2
+        offset = np.nanmean(ys - amp * (xs - x0)**2.0)
         return x0, amp, offset
 
 
 class Gaussian(_1D):
     """ Fit a 1D Gaussian to trace data
     """
-    def func(self, x, x0, amp, sigma, offset):
+    @classmethod
+    def func(cls, x, x0, amp, sigma, offset):
         """ 1D Gaussian function with offset"""
         assert sigma >= 0.0
         return amp * np.exp(-0.5 * ((x - x0) / sigma)**2.0) + offset
@@ -140,7 +158,8 @@ class Gaussian(_1D):
 class Lorentzian(_1D):
     """ Fit a 1D Lorentzian to trace data
     """
-    def func(self, x, x0, amp, gamma, offset):
+    @classmethod
+    def func(cls, x, x0, amp, gamma, offset):
         """ 1D Lorentzian function """
         assert gamma >= 0.0
         return amp * gamma**2 / ((x - x0)**2 + gamma**2) + offset
@@ -157,7 +176,8 @@ class Lorentzian(_1D):
 class EMG(_1D):
     """ Fit an exponentially modified Gaussian to 1D trace data
     """
-    def func(self, x, x0, amp, sigma, tau, offset):
+    @classmethod
+    def func(cls, x, x0, amp, sigma, tau, offset):
         """ 1D Gaussian convolved with an exponential decay (tau)"""
         assert sigma >= 0.0
         assert tau >= 0.0
@@ -179,7 +199,8 @@ class EMG(_1D):
 class DoubleEMG(_1D):
     """ Fit the sum of two exponentially modified Gaussians to 1D trace data
     """
-    def func(self, x, x0, a0, s0, t0, x1, a1, s1, t1, offset):
+    @classmethod
+    def func(cls, x, x0, a0, s0, t0, x1, a1, s1, t1, offset):
         """ The sum of two Gaussians convolved with an exponential decay curve"""
         assert x0 < x1
         assert s0 >= 0.0
@@ -215,7 +236,8 @@ class DoubleEMG(_1D):
 class Pulse(_1D):
     """ Fit a square pulse to 1D trace data
     """
-    def func(self, t, t0, width, amp, offset):
+    @classmethod
+    def func(cls, t, t0, width, amp, offset):
         """ A pulse waveform.      
 
         variables :
@@ -251,7 +273,8 @@ class Pulse(_1D):
 class Trapezoid(_1D):
     """ Fit a trapezoidal pulse to 1D trace data
     """
-    def func(self, t, t0, width, edge, amp, offset):
+    @classmethod
+    def func(cls, t, t0, width, edge, amp, offset):
         """ A pulse waveform with finite rise and fall time.      
 
         variables :
@@ -297,7 +320,8 @@ class Trapezoid(_1D):
 class BoxLucas(_1D):
     """ Fit a charging curve to 1D trace data
     """
-    def func(self, t, tau, amp, offset):
+    @classmethod
+    def func(cls, t, tau, amp, offset):
         """ Charging curve
             
             amp * (1 - exp(- t / tau)) + offset
@@ -315,7 +339,8 @@ class BoxLucas(_1D):
 class Charge(_1D):
     """ Fit a capactivie charging curve to 1D trace data
     """
-    def func(self, t, t0, tau, amp, offset):
+    @classmethod
+    def func(cls, t, t0, tau, amp, offset):
         """ Capactivie charging curve
             
             t < t0 :
@@ -344,7 +369,8 @@ class Charge(_1D):
 class ChargeDecay(_1D):
     """ Fit a capactivie charge-decay curve to 1D trace data
     """
-    def func(self, t, t0, width, tau, amp, offset):
+    @classmethod
+    def func(cls, t, t0, width, tau, amp, offset):
         """ Capactivie charging and decay curve
         
             t < t0 :
@@ -382,7 +408,8 @@ class ChargeDecay(_1D):
 class Decay(_1D):
     """ Fit an exponential decay curve to 1D trace data
     """
-    def func(self, t, amp, tau):
+    @classmethod
+    def func(cls, t, amp, tau):
         """ Decay curve
                
         """
@@ -398,7 +425,8 @@ class Decay(_1D):
 class DoubleDecay(_1D):
     """ Fit an exponential decay curve to 1D trace data
     """
-    def func(self, t, a0, tau0, a1, tau1):
+    @classmethod
+    def func(cls, t, a0, tau0, a1, tau1):
         """ Double decay curve
                
         """
@@ -421,7 +449,8 @@ class DoubleDecay(_1D):
 class TripleDecay(_1D):
     """ Fit an exponential decay curve to 1D trace data
     """
-    def func(self, t, a0, tau0, a1, tau1, a2, tau2):
+    @classmethod
+    def func(cls, t, a0, tau0, a1, tau1, a2, tau2):
         """ Triple decay curve
                
         """
@@ -468,8 +497,23 @@ class _2D(ABC):
         self.dx = np.mean(np.diff(self.xvals))
         self.dy = np.mean(np.diff(self.yvals))
         self.popt = None
-        self.sig = signature(self.func)
-        self.variables = tuple(self.sig.parameters.keys())[2:]
+
+    @classmethod
+    @abstractmethod
+    def func(cls, *vars):
+        pass
+
+    @classmethod
+    def signature(cls, **kwargs):
+        return signature(cls.func, **kwargs)
+
+    @classproperty
+    def variables(cls):
+        return tuple(cls.signature().parameters.keys())[2:]
+
+    @abstractmethod
+    def approx(self):
+        pass
 
     def fit(self, p0=None, maxfev=100):
         """ least-squares fit of func() to data """
@@ -495,19 +539,12 @@ class _2D(ABC):
         """ best fit vals """
         return self.Z - self.best_fit
 
-    @abstractmethod
-    def func(self):
-        pass
-
-    @abstractmethod
-    def approx(self):
-        pass
-
 
 class Gauss2D(_2D):
     """ Fit a 2D Gaussian to image data
     """
-    def func(self, x, y, x0, y0, amp, width, offset):
+    @classmethod
+    def func(cls, x, y, x0, y0, amp, width, offset):
         """ 2D Gaussian function with offset"""
         return amp * np.exp(-0.5 *
                             (((x - x0) / width)**2.0 +
@@ -543,7 +580,8 @@ class Gauss2D(_2D):
 class Gauss2DAngle(_2D):
     """ Fit an asymmetric 2D Gaussian to image data
     """
-    def func(self, x, y, x0, y0, amp, width, epsilon, angle, offset):
+    @classmethod
+    def func(cls, x, y, x0, y0, amp, width, epsilon, angle, offset):
         """ Asymmetric 2D Gaussian function with offset and angle """
         w1 = width
         w2 = epsilon * width
