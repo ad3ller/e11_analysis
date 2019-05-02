@@ -120,6 +120,60 @@ def floating_xlabels(ax, xticks, labels, y_pos, **kwargs):
     return ax
 
 
+def top_xticks(ax, minor=None, major=None, labels=None):
+    """
+    Add top axis to ax with custom major / minor ticks.
+       
+       args:
+           minor      # list() or np.ndarray() minor xtick locations
+           major      # None, list() or np.ndarray() major xtick locations
+           labels     # None, list() or np.ndarray() major xtick labels
+    
+        returns:
+            ax_top
+            
+        example:
+        
+            import numpy as np
+            import matplotlib.pyplot as plt
+            from positronium import Bohr
+
+            # minor ticks
+            nvals = np.arange(10, 200)
+            minor = Bohr.energy(2, nvals, unit="nm")
+
+            # major ticks
+            nvals = [10, 12, 15, 19, 24, 32, np.inf]
+            labels = map(lambda x: r"$\infty$" if x == np.inf else f"{x:d}", nvals)
+            major = Bohr.energy(2, nvals, unit="nm")
+
+            # plot
+            fig, ax = plt.subplots()
+
+            ax_top = top_xticks(ax, minor, major, labels)
+            ax_top.grid(which="both", axis="x", zorder=-20, alpha=0.2)
+            
+            ax.set_xlim(728, 762)
+            plt.show()
+                
+    """
+    ax_top = ax.twiny()
+    ax.get_shared_x_axes().join(ax, ax_top)
+    
+    # major
+    if major is not None:
+        ax_top.set_xticks(major)
+    if labels is not None:
+        ax_top.xaxis.set_ticklabels(labels)
+    
+    # minor 
+    if minor is not None:
+        ax_top.set_xticks(minor, minor=True)
+    
+    ax_top.set_xbound(ax.get_xbound())
+    return ax_top
+
+
 def subplots_xy(size=0.7, pad=0.15, aspect="auto", 
                 xaxis="off", yaxis="off", **kwargs):
     """ Create a figure with three subplots, ax, axx, and, axy.
