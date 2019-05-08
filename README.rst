@@ -35,16 +35,9 @@ Quick Start
 
     >>> # data file
     >>> fil = ".\\example_data\\microwave_scan.h5"
-    >>> os.path.exists(fil)
-
-.. parsed-literal::
-
-    True
-
-.. code:: ipython3
-
-    >>> # list datasets
     >>> scan = H5Scan(fil)
+    >>>
+    >>> # list datasets
     >>> print(scan.datasets())
 
 .. parsed-literal::
