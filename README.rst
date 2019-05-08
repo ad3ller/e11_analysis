@@ -36,7 +36,9 @@ Quick Start
     >>> # data file
     >>> fil = ".\\example_data\\microwave_scan.h5"
     >>> scan = H5Scan(fil)
-    >>>
+
+.. code:: ipython3
+
     >>> # list datasets
     >>> print(scan.datasets())
 
