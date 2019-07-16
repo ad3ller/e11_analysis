@@ -12,7 +12,6 @@ import numpy as np
 from abc import ABC, abstractmethod
 from scipy.optimize import curve_fit, leastsq
 from scipy.special import erfc
-from .tools import classproperty
 
 """ 
     1D data
@@ -35,26 +34,34 @@ class _1D(ABC):
 
     @classmethod
     @abstractmethod
-    def func(cls, *vars):
+    def func(cls, *args):
         pass
 
     @classmethod
-    def signature(cls, **kwargs):
-        return signature(cls.func, **kwargs)
+    def apply_func(cls, xdata, *params):
+        """ Apply cls.func() to data.
 
-    @classproperty
-    def variables(cls):
-        return tuple(cls.signature().parameters.keys())[1:]
-
-    @classmethod
-    def robust_func(cls, data, *params):
-        """ errors -> infs """
+        Notes
+        -----
+        apply_func(*args) trys to return func(*args) but if that
+        raises an Exception then an array of infs like xdata is 
+        returned instead. This allows assert statements defined 
+        in func to be used to constrain fit parameters.
+        """
         try:
-            result = cls.func(data, *params)
+            result = cls.func(xdata, *params)
         except:
-            result = np.full_like(data, np.inf)
+            result = np.full_like(xdata, np.inf)
         finally:
             return result
+
+    @classmethod
+    def get_signature(cls, **kwargs):
+        return signature(cls.func, **kwargs)
+
+    @classmethod
+    def get_variables(cls, **kwargs):
+        return tuple(cls.get_signature(**kwargs).parameters.keys())
 
     @abstractmethod
     def approx(self):
@@ -65,7 +72,7 @@ class _1D(ABC):
         sigma = kwargs.pop("sigma", self.sigma)
         if p0 is None:
             p0 = self.approx()
-        self.popt, self.pcov = curve_fit(self.robust_func,
+        self.popt, self.pcov = curve_fit(self.apply_func,
                                          self.xdata,
                                          self.ydata,
                                          p0=p0,
@@ -90,7 +97,7 @@ class _1D(ABC):
     def asdict(self, names=None, uncertainty=True):
         """ get best fit parameters as a dictionary"""
         if names is None:
-            names = list(self.variables)
+            names = list(self.get_variables()[1:])
         if uncertainty and self.perr is not None:
             return dict(zip(names, zip(self.popt, self.perr)))
         else:
@@ -488,28 +495,47 @@ class _2D(ABC):
             self.Z = Z
             self.xvals = X[0, :]
             self.yvals = Y[:, 0]
+            self.dx = np.mean(np.diff(self.xvals))
+            self.dy = np.mean(np.diff(self.yvals))
         else:
             self.Z = data[0]
             ny, nx = self.Z.shape
             self.xvals = np.arange(nx)
             self.yvals = np.arange(ny)
             self.X, self.Y = np.meshgrid(self.xvals, self.yvals)
-        self.dx = np.mean(np.diff(self.xvals))
-        self.dy = np.mean(np.diff(self.yvals))
+            self.dx = self.dy = 1
         self.popt = None
 
     @classmethod
     @abstractmethod
-    def func(cls, *vars):
+    def func(cls, *args):
         pass
 
     @classmethod
-    def signature(cls, **kwargs):
+    def apply_func(cls, X, Y, *params):
+        """ Apply cls.func() to data. 
+        
+        Notes
+        -----
+        apply_func(*args) trys to return func(*args) but if that
+        raises an Exception then an array of infs like X is returned
+        instead. This allows assert statements defined in func to
+        be used to constrain fit parameters. 
+        """
+        try:
+            result = cls.func(X, Y, *params)
+        except:
+            result = np.full_like(X, np.inf)
+        finally:
+            return result
+
+    @classmethod
+    def get_signature(cls, **kwargs):
         return signature(cls.func, **kwargs)
 
-    @classproperty
-    def variables(cls):
-        return tuple(cls.signature().parameters.keys())[2:]
+    @classmethod
+    def get_variables(cls, **kwargs):
+        return tuple(cls.get_signature(**kwargs).parameters.keys())
 
     @abstractmethod
     def approx(self):
@@ -519,9 +545,9 @@ class _2D(ABC):
         """ least-squares fit of func() to data """
         if p0 is None:
             p0 = self.approx()
-        popt, success = leastsq(lambda p: np.ravel(self.func(self.X,
-                                                             self.Y,
-                                                             *p)
+        popt, success = leastsq(lambda p: np.ravel(self.apply_func(self.X,
+                                                                   self.Y,
+                                                                   *p)
                                                    - self.Z),
                                 p0, maxfev=maxfev)
         if not success:

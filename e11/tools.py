@@ -225,18 +225,3 @@ def nth_dflip(arr, n=0):
     except IndexError:
         result = -1
     return result
-
-class classproperty(object):
-    """ (minimal) classproperty decorator
-    """
-    def __init__(self, getter):
-        self.getter = getter
-    
-    def __get__(self, instance, owner):
-        return self.getter(owner)
-
-    def __set__(self, instance, value):
-        raise AttributeError("cannot set class attribute")
-
-    def __delete__(self, instance):
-        raise AttributeError("cannot delete class attribute")
