@@ -20,7 +20,7 @@ And run tests,
 
    pytest
 
-The package can now be imported into python as *e11*.  
+The package can now be imported into python as `e11`.  
 
 
 Quick Start
@@ -28,7 +28,6 @@ Quick Start
 
 .. code:: ipython3
 
-    >>> import os
     >>> from e11 import H5Scan
 
 .. code:: ipython3
