@@ -4,11 +4,12 @@ Created on Fri May 10 17:14:09 2018
 
 @author: Adam
 
-    misc. plotting tools
+    plotting tools
+
+    simular xarray.DataArray plotting tools are avaialable in the xplot module
 
 """
 import numpy as np
-import xarray as xr
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -144,7 +145,7 @@ def top_xticks(ax, minor=None, major=None, labels=None):
 
             # major ticks
             nvals = [10, 12, 15, 19, 24, 32, np.inf]
-            labels = map(lambda x: r"$\infty$" if x == np.inf else f"{x:d}", nvals)
+            labels = map(lambda x: r"$\\infty$" if x == np.inf else f"{x:d}", nvals)
             major = Bohr.energy(2, nvals, unit="nm")
 
             # plot
@@ -174,7 +175,7 @@ def top_xticks(ax, minor=None, major=None, labels=None):
     return ax_top
 
 
-def subplots_xy(size=0.7, pad=0.15, aspect="auto", 
+def subplots_xy(size_xy=0.7, pad=0.15, aspect="auto", 
                 xaxis="off", yaxis="off", **kwargs):
     """ Create a figure with three subplots, ax, axx, and, axy.
 
@@ -182,7 +183,7 @@ def subplots_xy(size=0.7, pad=0.15, aspect="auto",
         right of the main subplot, ax.
 
         args:
-            size=0.7         # size of the subplots
+            size_xy=0.7      # size of the subplots
             pad=0.15         # subplot padding
             xaxis="off"      # toggle axx axis
             yaxis="off"      # toggle axy axis
@@ -195,18 +196,19 @@ def subplots_xy(size=0.7, pad=0.15, aspect="auto",
     """
     fig, ax = plt.subplots(**kwargs)
     divider = make_axes_locatable(ax)
-    axx = divider.append_axes("top", size=size, pad=pad, sharex=ax)
-    axy = divider.append_axes("right", size=size, pad=pad, sharey=ax)
+    axx = divider.append_axes("top", size=size_xy, pad=pad, sharex=ax)
+    axy = divider.append_axes("right", size=size_xy, pad=pad, sharey=ax)
     axx.axis(xaxis)
     axy.axis(yaxis)
     ax.set_aspect(aspect)
     return fig, (ax, axx, axy)
 
-def xy_autorange(img, axx, axy, data, xy_limits, xy_pad):
+def autorange_xy(img, axx, axy, data, xy_limits, xy_pad):
     """ Adjust axx and axy vertical range.
 
         xy_limits:
             None or "auto"   # matplotlib default range
+            (min, max)       # vrange to specified values
             "data"           # vrange to min and max of data -/+ xy_pad
             "match"          # vrange to min and max of default ranges of each
             "clim"           # vrange to img.clim() -/+ xy_pad
@@ -215,16 +217,20 @@ def xy_autorange(img, axx, axy, data, xy_limits, xy_pad):
             axx              # horizontal axis
             axy              # vertical axis
             data             # 2D numpy.ndarray
-            xy_limits        # None or "auto" / "data" / "match" / "clim"
+            xy_limits        # None or "auto" / (min, max) / "data" / "match" / "clim"
             xy_pad           # padding of the xy vertical range
                              # (active for xy_limits="data" or "clim")
         
         returns:
             axx, axy
     """
-        # axx vertical range
+    # axx vertical range
     if xy_limits is None or xy_limits == "auto":
         pass
+    elif isinstance(xy_limits, tuple):
+        # values specified
+        axx.set_ylim(*xy_limits)
+        axy.set_xlim(*xy_limits)
     elif xy_limits == "data":
         # edge plots range to match padded data range
         rng = data.max() - data.min()
@@ -264,8 +270,8 @@ def imshow_xy(axes, coord, data,
         args:
             axes             # (ax, axx, axy)
             coord            # position (x, y)
-            data             # 2D numpy.ndarray or xarray.DataArray
-            xy_limits=None   # None or "auto" / "data" / "match" / "clim"
+            data             # 2D numpy.ndarray
+            xy_limits=None   # None or "auto" / (min, max) / "data" / "match" / "clim"
             xy_pad=0.02      # padding of the xy vertical range
                              # (active for xy_limits="data" or "clim")
             add_lines=False  # mark coords with lines
@@ -273,7 +279,7 @@ def imshow_xy(axes, coord, data,
             step_kw=None     # dict() of kwargs for axx.step()
 
         kwargs:
-            passed to matplotlib.pyplot.imshow() or xarray.plot.imshow()
+            passed to matplotlib.pyplot.imshow()
 
         returns:
             img, step_x, step_y
@@ -302,23 +308,8 @@ def imshow_xy(axes, coord, data,
         xdata = data[yi, :]
         yvals = np.linspace(ymin, ymax, ny)
         ydata = data[:, xi]
-    elif isinstance(data, xr.DataArray):
-        xdim = kwargs.pop('x', data.dims[1])
-        ydim = kwargs.pop('y', data.dims[0])
-        if xdim in data.coords:
-            xvals = data.coords[xdim]
-            ydata = data.sel({xdim:x}, method="nearest")
-        else:
-            xvals = np.arange(data.sizes[xdim])
-            ydata = data.isel({xdim:int(np.round(x))})
-        if ydim in data.coords:
-            yvals = data.coords[ydim]
-            xdata = data.sel({ydim:y}, method="nearest")
-        else:
-            yvals = np.arange(data.sizes[ydim])
-            xdata = data.isel({ydim:int(np.round(y))})
     else:
-        raise TypeError("data must be a 2D numpy array or an xarray object")
+        raise TypeError("data must be a 2D numpy array")
     # xy step plots
     if step_kw is None:
         step_kw = {}
@@ -329,11 +320,7 @@ def imshow_xy(axes, coord, data,
                        orientation="vertical",
                        **step_kw)
     # plot image
-    if isinstance(data, xr.DataArray):
-        kwargs = {**{"add_colorbar":False}, **kwargs}
-        img = data.plot.imshow(x=xdim, y=ydim, ax=ax, **kwargs)
-    else:    
-        img = ax.imshow(data, **kwargs)
+    img = ax.imshow(data, **kwargs)
     # lines
     if add_lines:
         if line_kw is None:
@@ -341,7 +328,7 @@ def imshow_xy(axes, coord, data,
         ax.axvline(coord[0], **line_kw)
         ax.axhline(coord[1], **line_kw)
     # autorange
-    axx, axy = xy_autorange(img, axx, axy, data, xy_limits, xy_pad)
+    axx, axy = autorange_xy(img, axx, axy, data, xy_limits, xy_pad)
     return img, step_x, step_y
 
 
@@ -359,8 +346,7 @@ def contour_xy(axes, coord, *data,
             axes             # (ax, axx, axy)
             coord            # position (x, y)
             data             # [X, Y,] Z of 2D numpy.ndarrays
-                             # or xarray.DataArray
-            xy_limits=None   # None or "auto" / "data" / "match" / "clim"
+            xy_limits=None   # None or "auto" / (min, max) / "data" / "match" / "clim"
             xy_pad=0.02      # padding of the xy vertical range
                              # (active for xy_limits="data" or "clim")
             add_lines=False  # mark coords with lines
@@ -368,10 +354,10 @@ def contour_xy(axes, coord, *data,
             plot_kw=None     # dict() of kwargs for axx.plot()
 
         kwargs:
-            passed to matplotlib.pyplot.imshow() or xarray.plot.imshow()
+            passed to matplotlib.pyplot.imshow()
 
         returns:
-            cnt, step_x, step_y
+            cnt, plot_x, plot_y
     """
     ax, axx, axy = axes
     x, y = coord
@@ -424,33 +410,8 @@ def contour_xy(axes, coord, *data,
         else:
             cnt = ax.contour(*data, **kwargs)
         data = data[2]
-    # xarray.DataArray
-    elif len(data) == 1 and isinstance(data[0], xr.DataArray):
-        data = data[0]
-        xdim = kwargs.pop('x', data.dims[1])
-        ydim = kwargs.pop('y', data.dims[0])
-        if xdim in data.coords:
-            xvals = data.coords[xdim]
-            ydata = data.sel({xdim:x}, method="nearest")
-        else:
-            xvals = np.arange(data.sizes[xdim])
-            ydata = data.isel({xdim:int(np.round(x))})
-        if ydim in data.coords:
-            yvals = data.coords[ydim]
-            xdata = data.sel({ydim:y}, method="nearest")
-        else:
-            yvals = np.arange(data.sizes[ydim])
-            xdata = data.isel({ydim:int(np.round(y))})
-        # xy plot
-        plot_x = axx.plot(xvals, xdata, **plot_kw)
-        plot_y = axy.plot(ydata, yvals, **plot_kw)
-        kwargs = {**{"add_colorbar":False}, **kwargs}
-        if fill:
-            cnt = data.plot.contourf(x=xdim, y=ydim, ax=ax, **kwargs)
-        else:
-            cnt = data.plot.contour(x=xdim, y=ydim, ax=ax, **kwargs)
     else:
-        raise TypeError("data must one or three 2D numpy arrays or an xarray object")
+        raise TypeError("data must one or three 2D numpy arrays")
     # lines
     if add_lines:
         if line_kw is None:
@@ -458,5 +419,5 @@ def contour_xy(axes, coord, *data,
         ax.axvline(coord[0], **line_kw)
         ax.axhline(coord[1], **line_kw)
     # autorange
-    axx, axy = xy_autorange(cnt, axx, axy, data, xy_limits, xy_pad)
+    axx, axy = autorange_xy(cnt, axx, axy, data, xy_limits, xy_pad)
     return cnt, plot_x, plot_y
