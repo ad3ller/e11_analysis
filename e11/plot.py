@@ -9,6 +9,7 @@ Created on Fri May 10 17:14:09 2018
     simular xarray.DataArray plotting tools are avaialable in the xplot module
 
 """
+import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -81,7 +82,7 @@ def floating_xticks(ax, xticks, y_pos, length, **kwargs):
             ax          (matplotlib.axes._subplots.AxesSubplot)
             xticks      (list / np.ndarray)
             y_pos       (float)
-            length      (float)
+            length      (float) [in units of yscale]
 
         kwargs:
             passed to matplotlib.pyplot.plot
@@ -103,21 +104,34 @@ def floating_xlabels(ax, xticks, labels, y_pos, **kwargs):
     """ Write labels at x=xticks inside ax at y=y_pos.
 
         args:
-            ax          (matplotlib.axes._subplots.AxesSubplot)
-            xticks      (list / np.ndarray)
-            labels      (list / np.ndarray)
-            y_pos       (float)
+            ax            (matplotlib.axes._subplots.AxesSubplot)
+            xticks        (list / np.ndarray)
+            labels        (list / np.ndarray)
+            y_pos         (float)
 
         kwargs:
-            passed to matplotlib.pyplot.text
+            'alpha' (Number) or 'alpha_values' (Iterable)
+            'color' (str) or 'color_values' (Iterable)
+            
+            all other kwargs pass to matplotlib.pyplot.text
 
         returns:
             ax
     """
-    if "ha" not in kwargs:
+    # alignment default
+    if "ha" not in kwargs and "horizontalalignment" not in kwargs:
         kwargs["ha"] = "center"
-    for tx, lbl in zip(xticks, labels):
-        ax.text(tx, y_pos, str(lbl), **kwargs)
+    # text color
+    if "c" in kwargs and "color" not in kwargs:
+        kwargs["color"] = kwargs.pop("c")
+    color_values = kwargs.pop("color_values",
+                              itertools.repeat(kwargs.pop("color", "black")))
+    # text opacity
+    alpha_values = kwargs.pop("alpha_values",
+                              itertools.repeat(kwargs.pop("alpha", 1.0)))
+    # make labels
+    for tx, lbl, color, alpha in zip(xticks, labels, color_values, alpha_values):
+        ax.text(tx, y_pos, str(lbl), color=color, alpha=alpha, **kwargs)
     return ax
 
 
