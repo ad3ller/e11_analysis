@@ -23,7 +23,7 @@ def process_array(*data, func, subset, keys=None, convert_int=True, **kwargs):
     kwargs:
         keys=None         list of names of each dataset for use with
                             MultiIndex
-        convert_int=True  convert any integer types to int
+        convert_int=True  convert integer types to python int
 
     return:
         pd.DataFrame()
@@ -121,7 +121,7 @@ def median(*data, axis=1, subset=None, name="median", keys=None, **kwargs):
     return df
 
 
-def mean_std(*data, axis=1, subset=None, columns=["mean", "std"], keys=None,
+def mean_std(*data, axis=1, subset=None, columns=None, keys=None,
              **kwargs):
     """ Calculate the mean and standard deviation for an array dataset.
 
@@ -141,6 +141,8 @@ def mean_std(*data, axis=1, subset=None, columns=["mean", "std"], keys=None,
     notes:
         numpy.std() does not include the Bessel correction
     """
+    if columns is None:
+        columns = ["mean", "std"]
     func = lambda arr: pd.DataFrame(np.array([np.mean(arr, axis=axis),
                                               np.std(arr, axis=axis)]).T,
                                     columns=columns)
