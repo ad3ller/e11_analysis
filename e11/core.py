@@ -38,6 +38,8 @@ from .tools import sub_dire, utf8_attrs
 
 # constants
 MEASUREMENT_ID = "measurement"
+# log file: parquet, feather, or pkl
+LOG_FORMAT = "feather"
 
 
 def run_dire(base, rid, dire=None, create=False):
@@ -222,14 +224,12 @@ class H5Scan(object):
         ├── scope_1
         └── analysis
     """
-    def __init__(self, fil, out_dire=None, force=False):
+    def __init__(self, fil, out_dire=None, force=False, check_datafile=True):
         # data file
         self.fil = fil
-        if self.fil is not None:
-            check_datafile = True
+        if check_datafile and self.fil is not None:
             self.dire = os.path.dirname(self.fil)
         else:
-            check_datafile = False
             self.dire = None
         # output folder
         if out_dire is not None:
@@ -430,14 +430,12 @@ class H5Data(object):
         │         ⋮
         └──
     """
-    def __init__(self, fil, out_dire=None, force=False):
+    def __init__(self, fil, out_dire=None, force=False, check_datafile=True):
         # data file
         self.fil = fil
-        if self.fil is not None:
-            check_datafile = True
+        if check_datafile and self.fil is not None:
             self.dire = os.path.dirname(self.fil)
         else:
-            check_datafile = False
             self.dire = None
         # output folder
         if out_dire is not None:
@@ -472,7 +470,7 @@ class H5Data(object):
             self.log_file = None
         else:
             self.cache_dire = sub_dire(self.out_dire, "cache")
-            self.log_file = os.path.join(self.cache_dire, "log.pkl")
+            self.log_file = os.path.join(self.cache_dire, "log." + LOG_FORMAT)
         # initialise log cache
         self._log = None
         # check data file
@@ -545,22 +543,38 @@ class H5Data(object):
                 result["ACQUIRE"] = result["END"] - result["START"]
             if "DATETIME" in result:
                 result.DATETIME = pd.to_datetime(result.DATETIME)
-                result["ELAPSED"] = (result.DATETIME - result.DATETIME.min())
-        # save to pickle file
+        # save
         if cache and self.log_file is not None:
-            result.to_pickle(self.log_file)
+            _, ext = os.path.splitext(self.log_file)
+            if ext == ".parquet":
+                result.to_parquet(self.log_file)
+            elif ext == ".feather":
+                result.reset_index().to_feather(self.log_file)
+            elif ext == ".pkl":
+                result.to_pickle(self.log_file)
+            else:
+                raise OSError("log_file format not recognised")
         # result
         self._log = result
 
     def load_log(self, check=True):
-        """ Load [cache_dire]/log.pkl """
+        """ Load [cache_dire]/log.feather """
         if self.log_file is None:
             raise TypeError("log_file is None")
         elif not os.path.exists(self.log_file):
             raise OSError(f"{self.log_file} not found")
         else:
             # read cached file
-            log_df = pd.read_pickle(self.log_file)
+            _, ext = os.path.splitext(self.log_file)
+            if ext == ".parquet":
+                log_df = pd.read_parquet(self.log_file)
+            elif ext == ".feather":
+                log_df = pd.read_feather(self.log_file)
+                log_df = log_df.set_index("squid")
+            elif ext == ".pkl":
+                log_df = pd.read_pickle(self.log_file)
+            else:
+                raise OSError("log_file format not recognised")
             if check and len(log_df.index) != len(self.groups):
                 warnings.warn("len(log_df.index) != len(self.groups). "
                               "Try update_log().")

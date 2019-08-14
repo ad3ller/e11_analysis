@@ -6,7 +6,13 @@ Python 3 tools for analyzing experimental data stored in hdf5 files.
 Install
 -------
 
-Install using setuptools,
+Requirements:
+    h5py, scipy, numpy, pandas, pyarrow, tqdm, pytest
+
+Optional requirements:
+    xarray
+
+Install all dependencies then install `e11_analysis` using setuptools,
 
 .. code-block:: bash
 
