@@ -9,7 +9,7 @@ setup(name="e11",
       license="BSD",
       packages=["e11"],
       install_requires=[
-          "scipy>=0.14","numpy>=1.10","pandas>=0.17", "pyarrow>=0.12", "xarray>=0.11.0", "h5py>=2.5", "tqdm>=3.1.4"
+          "scipy>=0.14","numpy>=1.10","pandas>=0.17", "pyarrow>=0.12", "h5py>=2.5", "tqdm>=3.1.4"
       ],
       include_package_data=False,
       zip_safe=False)
