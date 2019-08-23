@@ -9,7 +9,7 @@ Install
 Requirements:
     h5py, scipy, numpy, pandas, pyarrow, tqdm, pytest
 
-Optional requirements:
+Optional:
     xarray
 
 Install all dependencies then install `e11_analysis` using setuptools,
