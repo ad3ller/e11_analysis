@@ -196,8 +196,16 @@ def cashew(method):
                 raise NameError(f"{fname} should have `.pkl` extension")
         # read cache ...
         if not update_cache and cache and os.path.isfile(cache_file):
-            result, info = pd.read_pickle(cache_file)
-            info["cache"] = cache_file
+            try:
+                result, info = pd.read_pickle(cache_file)
+                info["cache"] = cache_file
+            except:
+                warnings.warn(f"Failed to read the cache:{cache_file}. "
+                              "The file may have been pickled using an incompatible python build "
+                              "(e.g., different python version or OS).  Overwrite the existing "
+                              "cache using `update_cache=True` or create a new on one by setting "
+                              "`cache=[unique_cache_name]`.")
+                raise
         # ... or apply func ...
         else:
             result = method(*args, **kwargs)
