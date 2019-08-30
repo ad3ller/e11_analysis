@@ -150,7 +150,7 @@ class Gaussian(_1D):
     @classmethod
     def func(cls, x, x0, amp, sigma, offset):
         """ 1D Gaussian function with offset"""
-        assert sigma >= 0.0
+        assert sigma > 0.0
         return amp * np.exp(-0.5 * ((x - x0) / sigma)**2.0) + offset
 
     def approx(self):
@@ -162,13 +162,38 @@ class Gaussian(_1D):
         return x0, amp, sigma, offset
 
 
+class DoubleGaussian(_1D):
+    """ Fit a 1D Gaussian to trace data
+    """
+    @classmethod
+    def func(cls, x, x0, a0, w0, x1, a1, w1, offset):
+        """ 1D Gaussian function with offset"""
+        assert w0 > 0.0
+        assert w1 > 0.0
+        return (a0 * np.exp(-0.5 * ((x - x0) / w0)**2.0) 
+                + a1 * np.exp(-0.5 * ((x - x1) / w1)**2.0)
+                + offset)
+
+    def approx(self):
+        """ estimate func pars (assumes positive amplitude) """
+        x0 = self.xdata[np.argmax(self.ydata)]
+        offset = np.min(self.ydata)
+        a0 = np.max(self.ydata) - offset
+        w0 = 0.25 * ((self.ydata - offset) >= 0.5 * a0).sum() * abs(self.dx)
+        idx1 = np.argmax(np.logical_or(self.xdata < (x0 - w0),  self.xdata > (x0 + w0)) * self.ydata)
+        x1 = self.xdata[idx1]
+        a1 = self.ydata[idx1] - offset
+        w1 = w0
+        return x0, a0, w0, x1, a1, w1, offset
+
+
 class Lorentzian(_1D):
     """ Fit a 1D Lorentzian to trace data
     """
     @classmethod
     def func(cls, x, x0, amp, gamma, offset):
         """ 1D Lorentzian function """
-        assert gamma >= 0.0
+        assert gamma > 0.0
         return amp * gamma**2 / ((x - x0)**2 + gamma**2) + offset
 
     def approx(self):
@@ -178,6 +203,31 @@ class Lorentzian(_1D):
         amp = np.max(self.ydata) - offset
         gamma = ((self.ydata - offset) >= 0.5 * amp).sum() * abs(self.dx)
         return x0, amp, gamma, offset
+
+
+class DoubleLorentzian(_1D):
+    """ Fit a 1D Lorentzian to trace data
+    """
+    @classmethod
+    def func(cls, x, x0, a0, g0, x1, a1, g1, offset):
+        """ 1D Lorentzian function """
+        assert g0 > 0.0
+        assert g1 > 0.0
+        return (a0 * g0**2 / ((x - x0)**2 + g0**2) 
+                + a1 * g1**2 / ((x - x1)**2 + g1**2) 
+                + offset)
+
+    def approx(self):
+        """ estimate func pars (assumes positive amplitude)"""
+        x0 = self.xdata[np.argmax(self.ydata)]
+        offset = np.min(self.ydata)
+        a0 = np.max(self.ydata) - offset
+        g0 = 0.25 * ((self.ydata - offset) >= 0.5 * a0).sum() * abs(self.dx)
+        idx1 = np.argmax(np.logical_or(self.xdata < (x0 - g0),  self.xdata > (x0 + g0)) * self.ydata)
+        x1 = self.xdata[idx1]
+        a1 = self.ydata[idx1] - offset
+        g1 = g0
+        return x0, a0, g0, x1, a1, g1, offset
 
 
 class EMG(_1D):
