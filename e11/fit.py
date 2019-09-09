@@ -19,7 +19,7 @@ from scipy.special import erfc
 """
 
 class _1D(ABC):
-    """ Fit a 1D function to trace data
+    """ Fit a function to 1D data
     """
     def __init__(self, xdata, ydata, sigma=None):
         self.xdata = np.array(xdata)
@@ -39,7 +39,7 @@ class _1D(ABC):
 
     @classmethod
     def apply_func(cls, xdata, *params):
-        """ Apply cls.func() to data.
+        """ Apply cls.func() to xdata.
 
         Notes
         -----
@@ -105,7 +105,7 @@ class _1D(ABC):
 
 
 class Linear(_1D):
-    """ Fit a 1D line to trace data
+    """ Fit a line to 1D data
     """
     @classmethod
     def func(cls, x, m, c):
@@ -145,7 +145,7 @@ class Quadratic(_1D):
 
 
 class Gaussian(_1D):
-    """ Fit a 1D Gaussian to trace data
+    """ Fit a Gaussian to 1D data
     """
     @classmethod
     def func(cls, x, x0, amp, sigma, offset):
@@ -163,7 +163,7 @@ class Gaussian(_1D):
 
 
 class DoubleGaussian(_1D):
-    """ Fit a 1D Gaussian to trace data
+    """ Fit a double Gaussian to 1D data
     """
     @classmethod
     def func(cls, x, x0, a0, w0, x1, a1, w1, offset):
@@ -188,7 +188,7 @@ class DoubleGaussian(_1D):
 
 
 class Lorentzian(_1D):
-    """ Fit a 1D Lorentzian to trace data
+    """ Fit a Lorentzian to 1D data
     """
     @classmethod
     def func(cls, x, x0, amp, gamma, offset):
@@ -206,7 +206,7 @@ class Lorentzian(_1D):
 
 
 class DoubleLorentzian(_1D):
-    """ Fit a 1D Lorentzian to trace data
+    """ Fit a double Lorentzian to 1D data
     """
     @classmethod
     def func(cls, x, x0, a0, g0, x1, a1, g1, offset):
@@ -231,13 +231,13 @@ class DoubleLorentzian(_1D):
 
 
 class EMG(_1D):
-    """ Fit an exponentially modified Gaussian to 1D trace data
+    """ Fit an exponentially modified Gaussian to 1D data
     """
     @classmethod
     def func(cls, x, x0, amp, sigma, tau, offset):
         """ 1D Gaussian convolved with an exponential decay (tau)"""
-        assert sigma >= 0.0
-        assert tau >= 0.0
+        assert sigma > 0.0
+        assert tau > 0.0
         return amp \
                * np.exp(0.5 * (2.0 * x0 + sigma**2.0 / tau - 2 * x) / tau) \
                * erfc((x0 + sigma**2.0 / tau - x) / (2.0**0.5 * sigma)) \
@@ -254,16 +254,16 @@ class EMG(_1D):
 
 
 class DoubleEMG(_1D):
-    """ Fit the sum of two exponentially modified Gaussians to 1D trace data
+    """ Fit the sum of two exponentially modified Gaussians to 1D data
     """
     @classmethod
     def func(cls, x, x0, a0, s0, t0, x1, a1, s1, t1, offset):
-        """ The sum of two Gaussians convolved with an exponential decay curve"""
+        """ The sum of two Gaussians convolved with two exponential decay curve"""
         assert x0 < x1
-        assert s0 >= 0.0
-        assert s1 >= 0.0
-        assert t0 >= 0.0
-        assert t1 >= 0.0
+        assert s0 > 0.0
+        assert s1 > 0.0
+        assert t0 > 0.0
+        assert t1 > 0.0
         def emg(mu, amp, sigma, tau):
             return amp \
                    * np.exp(0.5 * (2.0 * mu + sigma**2.0 / tau - 2.0 * x) / tau) \
@@ -291,7 +291,7 @@ class DoubleEMG(_1D):
 
 
 class Pulse(_1D):
-    """ Fit a square pulse to 1D trace data
+    """ Fit a square pulse to 1D data
     """
     @classmethod
     def func(cls, t, t0, width, amp, offset):
@@ -328,7 +328,7 @@ class Pulse(_1D):
         return t0, width, amp, offset
 
 class Trapezoid(_1D):
-    """ Fit a trapezoidal pulse to 1D trace data
+    """ Fit a trapezoidal pulse to 1D data
     """
     @classmethod
     def func(cls, t, t0, width, edge, amp, offset):
@@ -375,7 +375,7 @@ class Trapezoid(_1D):
 
 
 class BoxLucas(_1D):
-    """ Fit a charging curve to 1D trace data
+    """ Fit a charging curve to 1D data
     """
     @classmethod
     def func(cls, t, tau, amp, offset):
@@ -394,7 +394,7 @@ class BoxLucas(_1D):
         return tau, amp, offset
 
 class Charge(_1D):
-    """ Fit a capactivie charging curve to 1D trace data
+    """ Fit a capactivie charging curve to 1D data
     """
     @classmethod
     def func(cls, t, t0, tau, amp, offset):
@@ -424,7 +424,7 @@ class Charge(_1D):
 
 
 class ChargeDecay(_1D):
-    """ Fit a capactivie charge-decay curve to 1D trace data
+    """ Fit a capactivie charge-decay curve to 1D data
     """
     @classmethod
     def func(cls, t, t0, width, tau, amp, offset):
@@ -463,7 +463,7 @@ class ChargeDecay(_1D):
 
 
 class Decay(_1D):
-    """ Fit an exponential decay curve to 1D trace data
+    """ Fit an exponential decay curve to 1D data
     """
     @classmethod
     def func(cls, t, amp, tau):
@@ -480,7 +480,7 @@ class Decay(_1D):
         return amp, tau
 
 class DoubleDecay(_1D):
-    """ Fit an exponential decay curve to 1D trace data
+    """ Fit a double exponential decay curve to 1D trace data
     """
     @classmethod
     def func(cls, t, a0, tau0, a1, tau1):
@@ -504,7 +504,7 @@ class DoubleDecay(_1D):
         return a0, tau0, a1, tau1
 
 class TripleDecay(_1D):
-    """ Fit an exponential decay curve to 1D trace data
+    """ Fit a triple exponential decay curve to 1D data
     """
     @classmethod
     def func(cls, t, a0, tau0, a1, tau1, a2, tau2):
