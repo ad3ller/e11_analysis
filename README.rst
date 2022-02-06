@@ -1,7 +1,10 @@
 e11 analysis
 ============
 
+*Note.  This project is no longer being developed and has been archived.*
+
 Python 3 tools for analyzing experimental data stored in hdf5 files.
+
 
 Install
 -------
